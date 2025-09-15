@@ -153,19 +153,19 @@ impl TestDataGenerator {
             CompressionLevel::Easy => {
                 // Use limited byte range for better compression
                 for byte in data.iter_mut() {
-                    *byte = self.rng.gen_range(0..16);
+                    *byte = self.rng.random_range(0..16);
                 }
             }
             CompressionLevel::Medium => {
                 // Use wider byte range
                 for byte in data.iter_mut() {
-                    *byte = self.rng.gen_range(0..64);
+                    *byte = self.rng.random_range(0..64);
                 }
             }
             CompressionLevel::Hard => {
                 // Use full byte range
                 for byte in data.iter_mut() {
-                    *byte = self.rng.gen();
+                    *byte = self.rng.random();
                 }
             }
         }
@@ -240,7 +240,7 @@ impl TestDataGenerator {
                     "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog",
                 ];
                 while data.len() < size {
-                    let word = words[self.rng.gen_range(0..words.len())];
+                    let word = words[self.rng.random_range(0..words.len())];
                     data.extend_from_slice(word.as_bytes());
                     data.push(b' ');
                 }
@@ -276,7 +276,7 @@ impl TestDataGenerator {
                     "analysis",
                 ];
                 while data.len() < size {
-                    let word = words[self.rng.gen_range(0..words.len())];
+                    let word = words[self.rng.random_range(0..words.len())];
                     data.extend_from_slice(word.as_bytes());
                     data.push(b' ');
                 }
@@ -285,7 +285,7 @@ impl TestDataGenerator {
                 // Random text-like data
                 let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \n\t";
                 while data.len() < size {
-                    data.push(chars[self.rng.gen_range(0..chars.len())]);
+                    data.push(chars[self.rng.random_range(0..chars.len())]);
                 }
             }
         }
@@ -309,7 +309,7 @@ impl TestDataGenerator {
                 // Semi-structured binary data
                 let mut data = vec![0u8; size];
                 for chunk in data.chunks_mut(64) {
-                    let pattern = self.rng.gen::<u64>();
+                    let pattern = self.rng.random::<u64>();
                     for (i, byte) in chunk.iter_mut().enumerate() {
                         *byte = (pattern >> ((i % 8) * 8)) as u8;
                     }
@@ -445,7 +445,7 @@ mod tests {
         };
 
         let mut generator = TestDataGenerator::new(config);
-        let _value = generator.rng.gen::<u8>();
+        let _value = generator.rng.random::<u8>();
         // Just test that rng works - no assertion needed
     }
 
