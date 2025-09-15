@@ -1,125 +1,147 @@
-name: Release Build
+name: Build and Release
 
 on:
   push:
     tags:
-      - 'v*'  # Sadece v ile başlayan taglar için çalışır (v1.0.0, v2.1.3, vb.)
-  workflow_dispatch:  # Manuel olarak da çalıştırılabilir
+      - 'v*'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-        override: true
-        
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Cache cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Run tests
-      run: cargo test --workspace --verbose
-      
-    - name: Run clippy
-      run: cargo clippy --workspace -- -D warnings
-      
-    - name: Check formatting
-      run: cargo fmt --all -- --check
-
-  build-release:
-    name: Build Release Binaries
-    needs: build-and-test
+  build-and-release:
+    name: Build and Release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
-            artifact_name: parallel-mengene-linux-x86_64
-          - os: windows-latest
+            artifact_name: linux-x86_64
+            package_type: deb
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+            artifact_name: linux-x86_64-musl
+            package_type: deb
+          - os: windows-2019
             target: x86_64-pc-windows-msvc
-            artifact_name: parallel-mengene-windows-x86_64
-          - os: macos-latest
+            artifact_name: windows-x86_64
+            package_type: installer
+          - os: macos-12
             target: x86_64-apple-darwin
-            artifact_name: parallel-mengene-macos-x86_64
-            
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
-        
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Cache cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Build release binary
-      run: cargo build --release --target ${{ matrix.target }} --bin parallel-mengene
-      
-    - name: Create release directory
-      run: mkdir -p release
-      
-    - name: Copy binary to release directory
-      run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          cp target/${{ matrix.target }}/release/parallel-mengene.exe release/
-        else
-          cp target/${{ matrix.target }}/release/parallel-mengene release/
-        fi
-      shell: bash
-        
-    - name: Upload release artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.artifact_name }}
-        path: release/
+            artifact_name: macos-x86_64
+            package_type: app
+          - os: macos-12
+            target: aarch64-apple-darwin
+            artifact_name: macos-aarch64
+            package_type: app
 
-  # Release creation is disabled due to permission issues
-  # Binaries are available as artifacts in the workflow run
-  # You can manually create releases using the artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+
+      - name: Build
+        run: |
+          cargo build --release --target ${{ matrix.target }} --bin parallel-mengene
+
+      # Linux .deb package
+      - name: Create .deb package (Ubuntu)
+        if: matrix.os == 'ubuntu-20.04' && matrix.package_type == 'deb'
+        run: |
+          # Install cargo-deb
+          cargo install cargo-deb --version 2.0.0
+          
+          # Create .deb package
+          cargo deb --target ${{ matrix.target }} --bin parallel-mengene
+          
+          # Move the .deb file to a known location
+          mkdir -p dist
+          cp target/${{ matrix.target }}/debian/*.deb dist/parallel-mengene-${{ matrix.artifact_name }}.deb
+
+      # Windows NSIS Installer
+      - name: Create Windows Installer
+        if: matrix.os == 'windows-2019' && matrix.package_type == 'installer'
+        run: |
+          # Install NSIS
+          choco install nsis -y
+          
+          # Copy installer script
+          copy scripts\installer.nsi .
+          
+          # Copy documentation files
+          copy README.md .
+          copy docs\USER_GUIDE.md .
+          copy docs\API_REFERENCE.md .
+          
+          # Compile installer
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+          
+          # Create dist directory and move installer
+          mkdir dist
+          move parallel-mengene-installer.exe "dist\parallel-mengene-${{ matrix.artifact_name }}-installer.exe"
+
+      # macOS .app bundle
+      - name: Create macOS App Bundle
+        if: matrix.os == 'macos-12' && matrix.package_type == 'app'
+        run: |
+          # Use the script to create app bundle
+          chmod +x scripts/create-macos-app.sh
+          ./scripts/create-macos-app.sh ${{ matrix.target }} ${{ matrix.artifact_name }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: parallel-mengene-${{ matrix.artifact_name }}
+          path: |
+            dist/
+            target/${{ matrix.target }}/release/parallel-mengene*
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: build-and-release
+    runs-on: ubuntu-20.04
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/*/dist/*.deb
+            artifacts/*/dist/*.exe
+            artifacts/*/dist/*.tar.gz
+            artifacts/*/target/*/release/parallel-mengene*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
