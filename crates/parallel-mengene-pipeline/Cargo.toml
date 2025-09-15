@@ -1,0 +1,31 @@
+[package]
+name = "parallel-mengene-pipeline"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "High-performance parallel compression pipeline for parallel-mengene"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# Core dependencies
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# Performance
+rayon.workspace = true
+memmap2.workspace = true
+crossbeam-channel.workspace = true
+num_cpus.workspace = true
+byteorder.workspace = true
+
+# Core crate
+parallel-mengene-core = { path = "../parallel-mengene-core" }
+
+# GPU crate - REMOVED (CPU-only approach)

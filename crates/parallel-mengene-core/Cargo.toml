@@ -1,0 +1,40 @@
+[package]
+name = "parallel-mengene-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core compression algorithms and data structures for parallel-mengene"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# Core dependencies
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Performance
+rayon.workspace = true
+memmap2.workspace = true
+crossbeam-channel.workspace = true
+
+# Compression algorithms
+lz4_flex.workspace = true
+flate2.workspace = true
+zstd.workspace = true
+
+# Utilities
+byteorder.workspace = true
+crc32fast.workspace = true
+sha2.workspace = true
+humantime.workspace = true
+num_cpus.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

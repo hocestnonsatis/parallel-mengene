@@ -1,0 +1,37 @@
+[package]
+name = "parallel-mengene-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Command-line interface for parallel-mengene"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "parallel-mengene"
+path = "src/main.rs"
+
+[dependencies]
+# Core dependencies
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# CLI
+clap.workspace = true
+indicatif.workspace = true
+console.workspace = true
+
+# Core crate
+parallel-mengene-core = { path = "../parallel-mengene-core" }
+
+# GPU crate - REMOVED (CPU-only approach)
+
+# Pipeline crate
+parallel-mengene-pipeline = { path = "../parallel-mengene-pipeline" }

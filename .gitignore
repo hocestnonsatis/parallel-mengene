@@ -1,0 +1,28 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Test data files (keep structure, ignore generated data)
+tests/fixtures/*/
+tests/results/
+tests/reports/
+tests/benchmarks/results/
+*.compressed
+*.decompressed
+*.pmz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+roadmap.md

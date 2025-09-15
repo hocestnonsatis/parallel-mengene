@@ -1,0 +1,58 @@
+# Cargo.toml (workspace root)
+
+[workspace]
+members = [
+    "crates/parallel-mengene-core",
+    "crates/parallel-mengene-cli", 
+    "crates/parallel-mengene-pipeline"
+]
+
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Parallel-Mengene Team"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/hocestnonsatis/parallel-mengene"
+homepage = "https://github.com/hocestnonsatis/parallel-mengene"
+description = "High-performance parallel file compression tool - Squeeze it parallel!"
+keywords = ["compression", "performance", "parallel", "cpu", "multithreading"]
+categories = ["compression", "command-line-utilities"]
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Core dependencies
+tokio = { version = "1.47", features = ["full"] }
+anyhow = "1.0"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# GPU & Vulkan - REMOVED (CPU-only approach)
+
+# Performance
+rayon = "1.11"
+memmap2 = "0.9"
+crossbeam-channel = "0.5"
+
+# CLI
+clap = { version = "4.5", features = ["derive", "cargo"] }
+indicatif = "0.18"
+console = "0.16"
+
+# Compression algorithms
+lz4_flex = "0.11"
+flate2 = "1.1"
+zstd = "0.13"
+
+# Testing & Benchmarks
+criterion = { version = "0.7", features = ["html_reports"] }
+proptest = "1.7"
+
+# Utilities
+byteorder = "1.5"
+crc32fast = "1.5"
+sha2 = "0.10"
+humantime = "2.3"
+num_cpus = "1.17"
