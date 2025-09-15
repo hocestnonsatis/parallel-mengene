@@ -54,9 +54,9 @@ installer.nsi
 debian/
 *.deb
 
-# License files (generated)
-LICENSE-MIT
-LICENSE-APACHE
+# License files are tracked in git
+# LICENSE-MIT
+# LICENSE-APACHE
 
 # Temporary files
 *.tmp
