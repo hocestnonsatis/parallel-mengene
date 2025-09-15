@@ -100,7 +100,7 @@ jobs:
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
         
     - name: Build release binary
-      run: cargo build --release --target ${{ matrix.target }} --bin parallel-mengene-cli
+      run: cargo build --release --target ${{ matrix.target }} --bin parallel-mengene
       
     - name: Create release directory
       run: mkdir -p release
@@ -108,9 +108,9 @@ jobs:
     - name: Copy binary to release directory
       run: |
         if [ "${{ runner.os }}" = "Windows" ]; then
-          cp target/${{ matrix.target }}/release/parallel-mengene-cli.exe release/
+          cp target/${{ matrix.target }}/release/parallel-mengene.exe release/
         else
-          cp target/${{ matrix.target }}/release/parallel-mengene-cli release/
+          cp target/${{ matrix.target }}/release/parallel-mengene release/
         fi
         
     - name: Upload release artifacts
@@ -171,7 +171,7 @@ jobs:
           
           ### Usage
           ```bash
-          ./parallel-mengene-cli --help
+          ./parallel-mengene --help
           ```
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
