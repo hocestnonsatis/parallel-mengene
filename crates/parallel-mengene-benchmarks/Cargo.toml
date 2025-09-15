@@ -39,7 +39,7 @@ serde_json.workspace = true
 csv.workspace = true
 
 # Statistics
-statistics = "0.1"
+statistics = "0.4"
 statistical = "0.1"
 
 # Time and system info
