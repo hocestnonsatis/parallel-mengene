@@ -64,7 +64,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Statistics and analysis
 statistics = "0.4"
-statistical = "0.1"
+statistical = "1.0"
 
 # Test dependencies
 tempfile = "3.8"
