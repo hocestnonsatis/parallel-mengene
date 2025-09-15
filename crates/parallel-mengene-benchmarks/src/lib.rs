@@ -1,5 +1,5 @@
 //! Advanced benchmarking tools for parallel-mengene
-//! 
+//!
 //! This crate provides comprehensive benchmarking capabilities including:
 //! - Performance analysis and comparison
 //! - Memory usage tracking

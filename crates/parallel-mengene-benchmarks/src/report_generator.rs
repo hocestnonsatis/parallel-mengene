@@ -89,7 +89,7 @@ impl ReportGenerator {
     pub fn new(config: ReportConfig) -> Self {
         Self { config }
     }
-    
+
     /// Generate comprehensive benchmark report
     pub fn generate_report(
         &self,
@@ -105,15 +105,19 @@ impl ReportGenerator {
         } else {
             None
         };
-        
+
         let report = BenchmarkReport {
             metadata,
             summary,
             performance_analysis,
-            raw_metrics: if self.config.include_raw_data { metrics } else { vec![] },
+            raw_metrics: if self.config.include_raw_data {
+                metrics
+            } else {
+                vec![]
+            },
             system_info,
         };
-        
+
         // Generate reports in requested formats
         match self.config.output_format {
             ReportFormat::Json => self.generate_json_report(&report, output_dir)?,
@@ -127,28 +131,29 @@ impl ReportGenerator {
                 self.generate_csv_report(&report, output_dir)?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate summary statistics
     fn generate_summary(&self, metrics: &[BenchmarkMetrics]) -> BenchmarkSummary {
         let total_tests = metrics.len();
-        let successful_tests = metrics.iter()
-            .filter(|m| m.error_message.is_none())
-            .count();
+        let successful_tests = metrics.iter().filter(|m| m.error_message.is_none()).count();
         let failed_tests = total_tests - successful_tests;
-        
-        let compression_speeds: Vec<f64> = metrics.iter()
+
+        let compression_speeds: Vec<f64> = metrics
+            .iter()
             .map(|m| m.compression_metrics.throughput_mbps)
             .collect();
-        let decompression_speeds: Vec<f64> = metrics.iter()
+        let decompression_speeds: Vec<f64> = metrics
+            .iter()
             .map(|m| m.decompression_metrics.throughput_mbps)
             .collect();
-        let compression_ratios: Vec<f64> = metrics.iter()
+        let compression_ratios: Vec<f64> = metrics
+            .iter()
             .map(|m| m.compression_metrics.compression_ratio)
             .collect();
-        
+
         BenchmarkSummary {
             total_tests,
             successful_tests,
@@ -169,21 +174,26 @@ impl ReportGenerator {
                 0.0
             },
             total_duration: Duration::from_secs(0), // Will be set by caller
-            peak_memory_usage: metrics.iter()
+            peak_memory_usage: metrics
+                .iter()
                 .map(|m| m.compression_metrics.memory_peak_mb)
                 .fold(0.0, f64::max),
-            peak_cpu_usage: metrics.iter()
+            peak_cpu_usage: metrics
+                .iter()
                 .map(|m| m.compression_metrics.cpu_usage_percent)
                 .fold(0.0, f64::max),
         }
     }
-    
+
     /// Generate report metadata
-    fn generate_metadata(&self, metrics: &[BenchmarkMetrics], duration: Duration) -> ReportMetadata {
-        let algorithms: std::collections::HashSet<String> = metrics.iter()
-            .map(|m| m.algorithm.clone())
-            .collect();
-        
+    fn generate_metadata(
+        &self,
+        metrics: &[BenchmarkMetrics],
+        duration: Duration,
+    ) -> ReportMetadata {
+        let algorithms: std::collections::HashSet<String> =
+            metrics.iter().map(|m| m.algorithm.clone()).collect();
+
         ReportMetadata {
             generated_at: chrono::Utc::now().to_rfc3339(),
             version: env!("CARGO_PKG_VERSION").to_string(),
@@ -193,12 +203,14 @@ impl ReportGenerator {
             report_format: format!("{:?}", self.config.output_format),
         }
     }
-    
+
     /// Collect system information
     fn collect_system_info() -> SystemInfo {
-        let total_memory = sysinfo::System::new_all().total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
-        let available_memory = sysinfo::System::new_all().available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
-        
+        let total_memory =
+            sysinfo::System::new_all().total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+        let available_memory =
+            sysinfo::System::new_all().available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+
         SystemInfo {
             os: std::env::consts::OS.to_string(),
             cpu_cores: num_cpus::get(),
@@ -208,7 +220,7 @@ impl ReportGenerator {
             rust_version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
-    
+
     /// Generate JSON report
     fn generate_json_report(&self, report: &BenchmarkReport, output_dir: &Path) -> Result<()> {
         let json_content = serde_json::to_string_pretty(report)
@@ -217,7 +229,7 @@ impl ReportGenerator {
         fs::write(json_path, json_content)?;
         Ok(())
     }
-    
+
     /// Generate HTML report
     fn generate_html_report(&self, report: &BenchmarkReport, output_dir: &Path) -> Result<()> {
         let html_content = self.generate_html_content(report);
@@ -225,7 +237,7 @@ impl ReportGenerator {
         fs::write(html_path, html_content)?;
         Ok(())
     }
-    
+
     /// Generate Markdown report
     fn generate_markdown_report(&self, report: &BenchmarkReport, output_dir: &Path) -> Result<()> {
         let markdown_content = self.generate_markdown_content(report);
@@ -233,12 +245,12 @@ impl ReportGenerator {
         fs::write(markdown_path, markdown_content)?;
         Ok(())
     }
-    
+
     /// Generate CSV report
     fn generate_csv_report(&self, report: &BenchmarkReport, output_dir: &Path) -> Result<()> {
         let mut csv_content = String::new();
         csv_content.push_str("Algorithm,File,File_Size,Compression_Speed_MBps,Decompression_Speed_MBps,Compression_Ratio,Memory_Peak_MB,CPU_Usage_Percent,Integrity_Check,Error\n");
-        
+
         for metric in &report.raw_metrics {
             csv_content.push_str(&format!(
                 "{},{},{},{:.2},{:.2},{:.4},{:.2},{:.2},{},{}\n",
@@ -254,12 +266,12 @@ impl ReportGenerator {
                 metric.error_message.as_deref().unwrap_or("")
             ));
         }
-        
+
         let csv_path = output_dir.join("benchmark_results.csv");
         fs::write(csv_path, csv_content)?;
         Ok(())
     }
-    
+
     /// Generate HTML content
     fn generate_html_content(&self, report: &BenchmarkReport) -> String {
         format!(
@@ -361,17 +373,25 @@ impl ReportGenerator {
             report.summary.average_decompression_speed,
             report.summary.average_compression_ratio,
             report.performance_analysis.best_overall_algorithm,
-            self.generate_algorithm_comparison_html(&report.performance_analysis.algorithm_comparisons),
-            report.performance_analysis.recommendations.join("</li><li>"),
+            self.generate_algorithm_comparison_html(
+                &report.performance_analysis.algorithm_comparisons
+            ),
+            report
+                .performance_analysis
+                .recommendations
+                .join("</li><li>"),
             self.generate_detailed_results_html(&report.raw_metrics),
             self.generate_system_info_html(&report.system_info)
         )
     }
-    
+
     /// Generate algorithm comparison HTML
-    fn generate_algorithm_comparison_html(&self, comparisons: &[crate::performance_analyzer::AlgorithmComparison]) -> String {
+    fn generate_algorithm_comparison_html(
+        &self,
+        comparisons: &[crate::performance_analyzer::AlgorithmComparison],
+    ) -> String {
         let mut html = String::new();
-        
+
         for comparison in comparisons {
             html.push_str(&format!(
                 r#"<div class="algorithm-card">
@@ -394,16 +414,16 @@ impl ReportGenerator {
                 comparison.reliability_score
             ));
         }
-        
+
         html
     }
-    
+
     /// Generate detailed results HTML
     fn generate_detailed_results_html(&self, metrics: &[BenchmarkMetrics]) -> String {
         if metrics.is_empty() {
             return "<p>No detailed results available.</p>".to_string();
         }
-        
+
         let mut html = r#"<table>
             <thead>
                 <tr>
@@ -418,21 +438,22 @@ impl ReportGenerator {
                     <th>Status</th>
                 </tr>
             </thead>
-            <tbody>"#.to_string();
-        
+            <tbody>"#
+            .to_string();
+
         for metric in metrics {
             let status_class = if metric.error_message.is_none() && metric.integrity_check {
                 "status-success"
             } else {
                 "status-error"
             };
-            
+
             let status_text = if metric.error_message.is_none() && metric.integrity_check {
                 "✅ Success"
             } else {
                 "❌ Failed"
             };
-            
+
             html.push_str(&format!(
                 r#"<tr>
                     <td>{}</td>
@@ -457,11 +478,11 @@ impl ReportGenerator {
                 status_text
             ));
         }
-        
+
         html.push_str("</tbody></table>");
         html
     }
-    
+
     /// Generate system info HTML
     fn generate_system_info_html(&self, system_info: &Option<SystemInfo>) -> String {
         match system_info {
@@ -482,7 +503,7 @@ impl ReportGenerator {
             None => "<p>System information not available.</p>".to_string(),
         }
     }
-    
+
     /// Generate Markdown content
     fn generate_markdown_content(&self, report: &BenchmarkReport) -> String {
         format!(
@@ -546,23 +567,23 @@ impl ReportGenerator {
             self.generate_system_info_markdown(&report.system_info)
         )
     }
-    
+
     /// Generate detailed results Markdown
     fn generate_detailed_results_markdown(&self, metrics: &[BenchmarkMetrics]) -> String {
         if metrics.is_empty() {
             return "No detailed results available.".to_string();
         }
-        
+
         let mut markdown = "| Algorithm | File | Size | Comp Speed | Decomp Speed | Ratio | Memory | CPU | Status |\n".to_string();
         markdown.push_str("|-----------|------|------|------------|--------------|-------|--------|-----|--------|\n");
-        
+
         for metric in metrics {
             let status = if metric.error_message.is_none() && metric.integrity_check {
                 "✅"
             } else {
                 "❌"
             };
-            
+
             markdown.push_str(&format!(
                 "| {} | {} | {} | {:.1} MB/s | {:.1} MB/s | {:.2}% | {:.1} MB | {:.1}% | {} |\n",
                 metric.algorithm,
@@ -576,10 +597,10 @@ impl ReportGenerator {
                 status
             ));
         }
-        
+
         markdown
     }
-    
+
     /// Generate system info Markdown
     fn generate_system_info_markdown(&self, system_info: &Option<SystemInfo>) -> String {
         match system_info {
@@ -599,14 +620,14 @@ impl ReportGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_report_generator_creation() {
         let config = ReportConfig::default();
         let generator = ReportGenerator::new(config);
-        assert_eq!(generator.config.include_charts, true);
+        assert!(generator.config.include_charts);
     }
-    
+
     #[test]
     fn test_system_info_collection() {
         let system_info = ReportGenerator::collect_system_info();

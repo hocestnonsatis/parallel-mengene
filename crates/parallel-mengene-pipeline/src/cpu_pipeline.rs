@@ -6,7 +6,7 @@ use parallel_mengene_core::error::Result;
 use std::path::Path;
 
 /// CPU pipeline for compression operations
-/// 
+///
 /// Handles:
 /// - Small files (< 1MB)
 /// - Metadata processing
@@ -22,45 +22,45 @@ impl CpuPipeline {
         let context = CompressionContext::new(algorithm, None);
         Ok(Self { algorithm, context })
     }
-    
+
     /// Compress a file using CPU
     pub async fn compress_file(&self, input_path: &Path, output_path: &Path) -> Result<()> {
         // Read input file
         let input_data = std::fs::read(input_path)?;
-        
+
         // Compress data
         let compressed_data = self.context.compress(&input_data)?;
-        
+
         // Write output file
         std::fs::write(output_path, compressed_data)?;
-        
+
         Ok(())
     }
-    
+
     /// Compress a data chunk using CPU (synchronous)
     pub fn compress_chunk_sync(&self, data: &[u8]) -> Result<Vec<u8>> {
         self.context.compress(data)
     }
-    
+
     /// Compress a data chunk using CPU (async wrapper)
     pub async fn compress_chunk(&self, data: &[u8]) -> Result<Vec<u8>> {
         self.context.compress(data)
     }
-    
+
     /// Decompress a data chunk using CPU (async wrapper)
     pub async fn decompress_chunk(&self, compressed_data: &[u8]) -> Result<Vec<u8>> {
         self.context.decompress(compressed_data)
     }
-    
+
     /// Decompress a data chunk using CPU (synchronous)
     pub fn decompress_chunk_sync(&self, compressed_data: &[u8]) -> Result<Vec<u8>> {
         self.context.decompress(compressed_data)
     }
-    
+
     /// Process file metadata
     pub fn process_metadata(&self, file_path: &Path) -> Result<FileMetadata> {
         let metadata = std::fs::metadata(file_path)?;
-        
+
         Ok(FileMetadata {
             size: metadata.len(),
             created: metadata.created().ok(),
@@ -93,7 +93,9 @@ mod tests {
     fn create_large_test_data() -> Vec<u8> {
         let mut data = Vec::new();
         for i in 0..1000 {
-            data.extend_from_slice(&format!("Test data chunk {} with some repetitive content. ", i).as_bytes());
+            data.extend_from_slice(
+                format!("Test data chunk {} with some repetitive content. ", i).as_bytes(),
+            );
         }
         data
     }
@@ -130,7 +132,10 @@ mod tests {
 
         // Compress file
         let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
-        pipeline.compress_file(&input_path, &output_path).await.unwrap();
+        pipeline
+            .compress_file(&input_path, &output_path)
+            .await
+            .unwrap();
 
         // Verify output file exists
         assert!(output_path.exists());
@@ -322,8 +327,21 @@ mod tests {
         assert_ne!(lz4_compressed, zstd_compressed);
 
         // All should decompress to original data
-        assert_eq!(lz4_pipeline.decompress_chunk_sync(&lz4_compressed).unwrap(), test_data);
-        assert_eq!(gzip_pipeline.decompress_chunk_sync(&gzip_compressed).unwrap(), test_data);
-        assert_eq!(zstd_pipeline.decompress_chunk_sync(&zstd_compressed).unwrap(), test_data);
+        assert_eq!(
+            lz4_pipeline.decompress_chunk_sync(&lz4_compressed).unwrap(),
+            test_data
+        );
+        assert_eq!(
+            gzip_pipeline
+                .decompress_chunk_sync(&gzip_compressed)
+                .unwrap(),
+            test_data
+        );
+        assert_eq!(
+            zstd_pipeline
+                .decompress_chunk_sync(&zstd_compressed)
+                .unwrap(),
+            test_data
+        );
     }
 }

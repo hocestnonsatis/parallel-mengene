@@ -19,7 +19,7 @@ impl CompressionAlgorithm {
             CompressionAlgorithm::Zstd => 3,
         }
     }
-    
+
     /// Get the maximum compression level for this algorithm
     pub fn max_level(&self) -> u32 {
         match self {
@@ -63,12 +63,30 @@ mod tests {
 
     #[test]
     fn test_compression_algorithm_from_str() {
-        assert_eq!("lz4".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Lz4);
-        assert_eq!("LZ4".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Lz4);
-        assert_eq!("gzip".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Gzip);
-        assert_eq!("GZIP".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Gzip);
-        assert_eq!("zstd".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Zstd);
-        assert_eq!("ZSTD".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Zstd);
+        assert_eq!(
+            "lz4".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Lz4
+        );
+        assert_eq!(
+            "LZ4".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Lz4
+        );
+        assert_eq!(
+            "gzip".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Gzip
+        );
+        assert_eq!(
+            "GZIP".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Gzip
+        );
+        assert_eq!(
+            "zstd".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Zstd
+        );
+        assert_eq!(
+            "ZSTD".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Zstd
+        );
     }
 
     #[test]
@@ -103,7 +121,7 @@ mod tests {
     #[test]
     fn test_compression_algorithm_clone() {
         let original = CompressionAlgorithm::Zstd;
-        let cloned = original.clone();
+        let cloned = original;
         assert_eq!(original, cloned);
     }
 

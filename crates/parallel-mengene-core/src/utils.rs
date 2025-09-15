@@ -25,15 +25,15 @@ pub fn space_savings(original_size: usize, compressed_size: usize) -> f64 {
 pub fn format_file_size(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
     const THRESHOLD: u64 = 1024;
-    
+
     let mut size = bytes as f64;
     let mut unit_index = 0;
-    
+
     while size >= THRESHOLD as f64 && unit_index < UNITS.len() - 1 {
         size /= THRESHOLD as f64;
         unit_index += 1;
     }
-    
+
     if unit_index == 0 {
         format!("{} {}", bytes, UNITS[unit_index])
     } else {
@@ -44,15 +44,21 @@ pub fn format_file_size(bytes: u64) -> String {
 /// Validate that a path exists and is a file
 pub fn validate_file_path<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
-    
+
     if !path.exists() {
-        return Err(Error::InvalidInput(format!("File does not exist: {}", path.display())));
+        return Err(Error::InvalidInput(format!(
+            "File does not exist: {}",
+            path.display()
+        )));
     }
-    
+
     if !path.is_file() {
-        return Err(Error::InvalidInput(format!("Path is not a file: {}", path.display())));
+        return Err(Error::InvalidInput(format!(
+            "Path is not a file: {}",
+            path.display()
+        )));
     }
-    
+
     Ok(())
 }
 
@@ -100,11 +106,11 @@ mod tests {
         assert_eq!(format_file_size(1024), "1.0 KB");
         assert_eq!(format_file_size(1048576), "1.0 MB");
         assert_eq!(format_file_size(1073741824), "1.0 GB");
-        
+
         // Test just under thresholds
         assert_eq!(format_file_size(1023), "1023 B");
         assert_eq!(format_file_size(1048575), "1024.0 KB");
-        
+
         // Test large numbers
         assert_eq!(format_file_size(1099511627776), "1.0 TB");
     }
@@ -113,12 +119,12 @@ mod tests {
     fn test_validate_file_path_success() {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test_file.txt");
-        
+
         // Create a test file
         let mut file = File::create(&file_path).unwrap();
         file.write_all(b"test content").unwrap();
         drop(file);
-        
+
         // Should succeed
         assert!(validate_file_path(&file_path).is_ok());
     }
@@ -127,11 +133,11 @@ mod tests {
     fn test_validate_file_path_nonexistent() {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("nonexistent.txt");
-        
+
         // Should fail with InvalidInput error
         let result = validate_file_path(&file_path);
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             Error::InvalidInput(msg) => {
                 assert!(msg.contains("File does not exist"));
@@ -145,11 +151,11 @@ mod tests {
     fn test_validate_file_path_directory() {
         let temp_dir = tempdir().unwrap();
         let dir_path = temp_dir.path();
-        
+
         // Should fail because it's a directory, not a file
         let result = validate_file_path(dir_path);
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             Error::InvalidInput(msg) => {
                 assert!(msg.contains("Path is not a file"));
@@ -184,10 +190,10 @@ mod tests {
         // Test that we get reasonable precision
         let formatted = format_file_size(1536);
         assert_eq!(formatted, "1.5 KB");
-        
+
         let formatted = format_file_size(1537);
         assert_eq!(formatted, "1.5 KB");
-        
+
         let formatted = format_file_size(1538);
         assert_eq!(formatted, "1.5 KB");
     }

@@ -3,7 +3,6 @@
 use parallel_mengene_core::algorithms::CompressionAlgorithm;
 use parallel_mengene_pipeline::parallel_pipeline::ParallelPipeline;
 use std::fs;
-use std::path::Path;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
 
@@ -31,8 +30,10 @@ impl PerformanceMetrics {
         memory_usage_mb: f64,
     ) -> Self {
         let compression_ratio = output_size as f64 / input_size as f64;
-        let compression_speed_mbps = (input_size as f64 / 1_048_576.0) / compression_time.as_secs_f64();
-        let decompression_speed_mbps = (input_size as f64 / 1_048_576.0) / decompression_time.as_secs_f64();
+        let compression_speed_mbps =
+            (input_size as f64 / 1_048_576.0) / compression_time.as_secs_f64();
+        let decompression_speed_mbps =
+            (input_size as f64 / 1_048_576.0) / decompression_time.as_secs_f64();
 
         Self {
             algorithm,
@@ -79,7 +80,9 @@ impl PerformanceProfiler {
 
         // Warm up
         let _ = pipeline.compress_file(&input_path, &output_path).await;
-        let _ = pipeline.decompress_file(&output_path, &decompressed_path).await;
+        let _ = pipeline
+            .decompress_file(&output_path, &decompressed_path)
+            .await;
 
         // Measure compression time
         let compression_start = Instant::now();
@@ -91,7 +94,9 @@ impl PerformanceProfiler {
         // Measure decompression time
         let decompression_start = Instant::now();
         for _ in 0..iterations {
-            let _ = pipeline.decompress_file(&output_path, &decompressed_path).await;
+            let _ = pipeline
+                .decompress_file(&output_path, &decompressed_path)
+                .await;
         }
         let decompression_time = decompression_start.elapsed() / iterations as u32;
 
@@ -133,10 +138,7 @@ impl PerformanceProfiler {
     }
 
     /// Profile compression performance across different algorithms
-    pub async fn profile_algorithms(
-        &mut self,
-        data: &[u8],
-    ) -> Vec<PerformanceMetrics> {
+    pub async fn profile_algorithms(&mut self, data: &[u8]) -> Vec<PerformanceMetrics> {
         let algorithms = [
             CompressionAlgorithm::Lz4,
             CompressionAlgorithm::Gzip,
@@ -162,58 +164,63 @@ impl PerformanceProfiler {
         }
 
         // Find the slowest compression
-        let slowest_compression = self.results
+        let slowest_compression = self
+            .results
             .iter()
             .max_by(|a, b| a.compression_time.cmp(&b.compression_time))
             .unwrap();
 
         if slowest_compression.compression_speed_mbps < 10.0 {
             bottlenecks.push(format!(
-                "Slow compression detected: {:.2} MB/s for {} algorithm",
-                slowest_compression.compression_speed_mbps,
-                format!("{:?}", slowest_compression.algorithm)
+                "Slow compression detected: {:.2} MB/s for {:?} algorithm",
+                slowest_compression.compression_speed_mbps, slowest_compression.algorithm
             ));
         }
 
         // Find the slowest decompression
-        let slowest_decompression = self.results
+        let slowest_decompression = self
+            .results
             .iter()
             .max_by(|a, b| a.decompression_time.cmp(&b.decompression_time))
             .unwrap();
 
         if slowest_decompression.decompression_speed_mbps < 50.0 {
             bottlenecks.push(format!(
-                "Slow decompression detected: {:.2} MB/s for {} algorithm",
-                slowest_decompression.decompression_speed_mbps,
-                format!("{:?}", slowest_decompression.algorithm)
+                "Slow decompression detected: {:.2} MB/s for {:?} algorithm",
+                slowest_decompression.decompression_speed_mbps, slowest_decompression.algorithm
             ));
         }
 
         // Check for poor compression ratios
-        let worst_ratio = self.results
+        let worst_ratio = self
+            .results
             .iter()
-            .max_by(|a, b| a.compression_ratio.partial_cmp(&b.compression_ratio).unwrap())
+            .max_by(|a, b| {
+                a.compression_ratio
+                    .partial_cmp(&b.compression_ratio)
+                    .unwrap()
+            })
             .unwrap();
 
         if worst_ratio.compression_ratio > 0.9 {
             bottlenecks.push(format!(
-                "Poor compression ratio detected: {:.2}% for {} algorithm",
+                "Poor compression ratio detected: {:.2}% for {:?} algorithm",
                 worst_ratio.compression_ratio * 100.0,
-                format!("{:?}", worst_ratio.algorithm)
+                worst_ratio.algorithm
             ));
         }
 
         // Check for high memory usage
-        let highest_memory = self.results
+        let highest_memory = self
+            .results
             .iter()
             .max_by(|a, b| a.memory_usage_mb.partial_cmp(&b.memory_usage_mb).unwrap())
             .unwrap();
 
         if highest_memory.memory_usage_mb > 1000.0 {
             bottlenecks.push(format!(
-                "High memory usage detected: {:.2} MB for {} algorithm",
-                highest_memory.memory_usage_mb,
-                format!("{:?}", highest_memory.algorithm)
+                "High memory usage detected: {:.2} MB for {:?} algorithm",
+                highest_memory.memory_usage_mb, highest_memory.algorithm
             ));
         }
 
@@ -258,15 +265,25 @@ impl PerformanceProfiler {
 
         // Recommendations
         report.push_str("\n## Recommendations\n\n");
-        
-        let best_compression_speed = self.results
+
+        let best_compression_speed = self
+            .results
             .iter()
-            .max_by(|a, b| a.compression_speed_mbps.partial_cmp(&b.compression_speed_mbps).unwrap())
+            .max_by(|a, b| {
+                a.compression_speed_mbps
+                    .partial_cmp(&b.compression_speed_mbps)
+                    .unwrap()
+            })
             .unwrap();
 
-        let best_compression_ratio = self.results
+        let best_compression_ratio = self
+            .results
             .iter()
-            .min_by(|a, b| a.compression_ratio.partial_cmp(&b.compression_ratio).unwrap())
+            .min_by(|a, b| {
+                a.compression_ratio
+                    .partial_cmp(&b.compression_ratio)
+                    .unwrap()
+            })
             .unwrap();
 
         report.push_str(&format!(
@@ -276,7 +293,8 @@ impl PerformanceProfiler {
 
         report.push_str(&format!(
             "- **Best compression ratio**: {:?} ({:.2}%)\n",
-            best_compression_ratio.algorithm, best_compression_ratio.compression_ratio * 100.0
+            best_compression_ratio.algorithm,
+            best_compression_ratio.compression_ratio * 100.0
         ));
 
         report
@@ -285,6 +303,12 @@ impl PerformanceProfiler {
     /// Get all results
     pub fn results(&self) -> &[PerformanceMetrics] {
         &self.results
+    }
+}
+
+impl Default for PerformanceProfiler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -302,15 +326,15 @@ fn create_repetitive_data(size_mb: usize) -> Vec<u8> {
     let pattern = b"Hello, World! This is a repetitive pattern for compression testing. ";
     let mut data = Vec::with_capacity(size_mb * 1024 * 1024);
     let repetitions = (size_mb * 1024 * 1024) / pattern.len();
-    
+
     for _ in 0..repetitions {
         data.extend_from_slice(pattern);
     }
-    
+
     // Add remaining bytes
     let remaining = (size_mb * 1024 * 1024) % pattern.len();
     data.extend_from_slice(&pattern[..remaining]);
-    
+
     data
 }
 
@@ -329,7 +353,9 @@ mod tests {
         let mut profiler = PerformanceProfiler::new();
         let test_data = create_test_data(1); // 1MB
 
-        let metrics = profiler.profile_compression(CompressionAlgorithm::Lz4, &test_data, 1).await;
+        let metrics = profiler
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
+            .await;
 
         assert_eq!(metrics.algorithm, CompressionAlgorithm::Lz4);
         assert_eq!(metrics.input_size, test_data.len());
@@ -349,14 +375,16 @@ mod tests {
         let mut profiler = PerformanceProfiler::new();
         let sizes = vec![1, 5, 10]; // 1MB, 5MB, 10MB
 
-        let results = profiler.profile_scalability(CompressionAlgorithm::Zstd, &sizes).await;
+        let results = profiler
+            .profile_scalability(CompressionAlgorithm::Zstd, &sizes)
+            .await;
 
         assert_eq!(results.len(), 3);
         assert_eq!(profiler.results().len(), 3);
 
         // Verify that larger files take more time
         for i in 1..results.len() {
-            assert!(results[i].input_size > results[i-1].input_size);
+            assert!(results[i].input_size > results[i - 1].input_size);
         }
     }
 
@@ -383,7 +411,9 @@ mod tests {
         let test_data = create_test_data(1); // 1MB
 
         // Profile with a fast algorithm
-        profiler.profile_compression(CompressionAlgorithm::Lz4, &test_data, 1).await;
+        profiler
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
+            .await;
 
         let bottlenecks = profiler.detect_bottlenecks();
         // Should not detect bottlenecks for small, fast operations
@@ -395,7 +425,9 @@ mod tests {
         let mut profiler = PerformanceProfiler::new();
         let test_data = create_test_data(1); // 1MB
 
-        profiler.profile_compression(CompressionAlgorithm::Lz4, &test_data, 1).await;
+        profiler
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
+            .await;
 
         let report = profiler.generate_report();
         assert!(report.contains("Performance Report"));
@@ -408,7 +440,9 @@ mod tests {
         let mut profiler = PerformanceProfiler::new();
         let repetitive_data = create_repetitive_data(5); // 5MB
 
-        let metrics = profiler.profile_compression(CompressionAlgorithm::Zstd, &repetitive_data, 1).await;
+        let metrics = profiler
+            .profile_compression(CompressionAlgorithm::Zstd, &repetitive_data, 1)
+            .await;
 
         // Repetitive data should compress very well
         assert!(metrics.compression_ratio < 0.1); // Less than 10% of original size
@@ -422,12 +456,24 @@ mod tests {
         let results = profiler.profile_algorithms(&test_data).await;
 
         // All algorithms should produce different results
-        let lz4_result = results.iter().find(|r| r.algorithm == CompressionAlgorithm::Lz4).unwrap();
-        let gzip_result = results.iter().find(|r| r.algorithm == CompressionAlgorithm::Gzip).unwrap();
-        let zstd_result = results.iter().find(|r| r.algorithm == CompressionAlgorithm::Zstd).unwrap();
+        let lz4_result = results
+            .iter()
+            .find(|r| r.algorithm == CompressionAlgorithm::Lz4)
+            .unwrap();
+        let gzip_result = results
+            .iter()
+            .find(|r| r.algorithm == CompressionAlgorithm::Gzip)
+            .unwrap();
+        let zstd_result = results
+            .iter()
+            .find(|r| r.algorithm == CompressionAlgorithm::Zstd)
+            .unwrap();
 
         // Different algorithms should have different characteristics
-        assert_ne!(lz4_result.compression_speed_mbps, gzip_result.compression_speed_mbps);
+        assert_ne!(
+            lz4_result.compression_speed_mbps,
+            gzip_result.compression_speed_mbps
+        );
         assert_ne!(gzip_result.compression_ratio, zstd_result.compression_ratio);
     }
 }

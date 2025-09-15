@@ -103,21 +103,29 @@ impl MemoryMonitor {
         }
 
         let used_memory = total_memory.saturating_sub(available_memory);
-        Ok(MemoryStats::new(total_memory, available_memory, used_memory))
+        Ok(MemoryStats::new(
+            total_memory,
+            available_memory,
+            used_memory,
+        ))
     }
 
     /// Parse a line from /proc/meminfo
     fn parse_meminfo_line(&self, line: &str) -> Result<u64> {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
-            parts[1].parse::<u64>()
+            parts[1]
+                .parse::<u64>()
                 .map(|kb| kb * 1024) // Convert KB to bytes
-                .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(
-                    format!("Failed to parse memory info: {}", e)
-                ))
+                .map_err(|e| {
+                    parallel_mengene_core::error::Error::InvalidInput(format!(
+                        "Failed to parse memory info: {}",
+                        e
+                    ))
+                })
         } else {
             Err(parallel_mengene_core::error::Error::InvalidInput(
-                "Invalid meminfo line format".to_string()
+                "Invalid meminfo line format".to_string(),
             ))
         }
     }
@@ -131,17 +139,17 @@ impl MemoryMonitor {
     /// Get recommended chunk size based on available memory
     pub fn get_recommended_chunk_size(&self, base_chunk_size: usize) -> Result<usize> {
         let stats = self.get_memory_stats()?;
-        
+
         // If memory usage is high (>80%), reduce chunk size
         if stats.memory_percentage > 80.0 {
             Ok(base_chunk_size / 2)
         }
         // If memory usage is low (<50%), we can use larger chunks
-        else if stats.memory_percentage < 50.0 && stats.available_memory > 2 * 1024 * 1024 * 1024 {
+        else if stats.memory_percentage < 50.0 && stats.available_memory > 2 * 1024 * 1024 * 1024
+        {
             // Only increase if we have at least 2GB available
             Ok(base_chunk_size * 2)
-        }
-        else {
+        } else {
             Ok(base_chunk_size)
         }
     }
@@ -169,9 +177,9 @@ impl Default for MemoryMonitor {
 /// Memory usage warning thresholds
 #[derive(Debug, Clone)]
 pub struct MemoryThresholds {
-    pub warning: f64,    // 70%
-    pub critical: f64,   // 85%
-    pub emergency: f64,  // 95%
+    pub warning: f64,   // 70%
+    pub critical: f64,  // 85%
+    pub emergency: f64, // 95%
 }
 
 impl Default for MemoryThresholds {
@@ -214,7 +222,7 @@ impl MemoryUsageTracker {
     pub fn check_and_warn(&self) -> Result<()> {
         let stats = self.monitor.get_memory_stats()?;
         let now = Instant::now();
-        
+
         // Check if we should issue a warning (avoid spam)
         let mut last_warning_guard = self.last_warning.lock().unwrap();
         let should_warn = match *last_warning_guard {

@@ -1,8 +1,8 @@
 //! Test data generation for comprehensive benchmarking
 
 use parallel_mengene_core::error::Result;
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -32,9 +32,9 @@ pub enum DataType {
 /// Compression difficulty levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CompressionLevel {
-    Easy,    // Highly compressible
-    Medium,  // Moderately compressible
-    Hard,    // Difficult to compress
+    Easy,   // Highly compressible
+    Medium, // Moderately compressible
+    Hard,   // Difficult to compress
 }
 
 impl Default for TestDataConfig {
@@ -42,8 +42,8 @@ impl Default for TestDataConfig {
         Self {
             output_dir: PathBuf::from("test_data"),
             file_sizes: vec![
-                1024,           // 1KB
-                1024 * 1024,    // 1MB
+                1024,              // 1KB
+                1024 * 1024,       // 1MB
                 10 * 1024 * 1024,  // 10MB
                 100 * 1024 * 1024, // 100MB
             ],
@@ -80,23 +80,23 @@ impl TestDataGenerator {
                 .unwrap()
                 .as_secs()
         });
-        
+
         let rng = StdRng::seed_from_u64(seed);
-        
+
         Self { config, rng }
     }
-    
+
     /// Generate all test data according to configuration
     pub fn generate_all(&mut self) -> Result<()> {
         // Create output directory
         fs::create_dir_all(&self.config.output_dir)?;
-        
+
         let mut generated_files = Vec::new();
-        
+
         let file_sizes = self.config.file_sizes.clone();
         let data_types = self.config.data_types.clone();
         let compression_levels = self.config.compression_levels.clone();
-        
+
         for size in file_sizes {
             for data_type in &data_types {
                 for compression_level in &compression_levels {
@@ -105,16 +105,16 @@ impl TestDataGenerator {
                 }
             }
         }
-        
+
         // Generate metadata file
         self.generate_metadata(&generated_files)?;
-        
+
         println!("✅ Generated {} test files", generated_files.len());
         println!("📁 Output directory: {:?}", self.config.output_dir);
-        
+
         Ok(())
     }
-    
+
     /// Generate a single test file
     fn generate_file(
         &mut self,
@@ -128,9 +128,9 @@ impl TestDataGenerator {
             format!("{:?}", data_type).to_lowercase(),
             format!("{:?}", compression_level).to_lowercase()
         );
-        
+
         let file_path = self.config.output_dir.join(file_name);
-        
+
         let data = match data_type {
             DataType::Random => self.generate_random_data(size, compression_level),
             DataType::Repetitive => self.generate_repetitive_data(size, compression_level),
@@ -140,15 +140,15 @@ impl TestDataGenerator {
             DataType::ZeroFilled => self.generate_zero_filled_data(size),
             DataType::PatternBased => self.generate_pattern_data(size, compression_level),
         };
-        
+
         fs::write(&file_path, data)?;
         Ok(file_path)
     }
-    
+
     /// Generate random data
     fn generate_random_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         let mut data = vec![0u8; size];
-        
+
         match level {
             CompressionLevel::Easy => {
                 // Use limited byte range for better compression
@@ -169,25 +169,25 @@ impl TestDataGenerator {
                 }
             }
         }
-        
+
         data
     }
-    
+
     /// Generate repetitive data
     fn generate_repetitive_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         let mut data = Vec::with_capacity(size);
-        
+
         match level {
             CompressionLevel::Easy => {
                 // Long repeated patterns
                 let pattern_size = 1024;
                 let pattern = self.generate_random_data(pattern_size, level);
                 let repetitions = size / pattern_size;
-                
+
                 for _ in 0..repetitions {
                     data.extend_from_slice(&pattern);
                 }
-                
+
                 // Fill remaining bytes
                 let remaining = size % pattern_size;
                 if remaining > 0 {
@@ -199,11 +199,11 @@ impl TestDataGenerator {
                 let pattern_size = 256;
                 let pattern = self.generate_random_data(pattern_size, level);
                 let repetitions = size / pattern_size;
-                
+
                 for _ in 0..repetitions {
                     data.extend_from_slice(&pattern);
                 }
-                
+
                 let remaining = size % pattern_size;
                 if remaining > 0 {
                     data.extend_from_slice(&pattern[..remaining]);
@@ -214,29 +214,31 @@ impl TestDataGenerator {
                 let pattern_size = 16;
                 let pattern = self.generate_random_data(pattern_size, level);
                 let repetitions = size / pattern_size;
-                
+
                 for _ in 0..repetitions {
                     data.extend_from_slice(&pattern);
                 }
-                
+
                 let remaining = size % pattern_size;
                 if remaining > 0 {
                     data.extend_from_slice(&pattern[..remaining]);
                 }
             }
         }
-        
+
         data
     }
-    
+
     /// Generate text data
     fn generate_text_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         let mut data = Vec::with_capacity(size);
-        
+
         match level {
             CompressionLevel::Easy => {
                 // Highly repetitive text
-                let words = ["the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog"];
+                let words = [
+                    "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog",
+                ];
                 while data.len() < size {
                     let word = words[self.rng.gen_range(0..words.len())];
                     data.extend_from_slice(word.as_bytes());
@@ -246,10 +248,32 @@ impl TestDataGenerator {
             CompressionLevel::Medium => {
                 // Medium complexity text
                 let words = [
-                    "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog",
-                    "hello", "world", "this", "is", "a", "test", "file", "generated",
-                    "for", "benchmarking", "purposes", "with", "various", "compression",
-                    "algorithms", "and", "performance", "analysis"
+                    "the",
+                    "quick",
+                    "brown",
+                    "fox",
+                    "jumps",
+                    "over",
+                    "lazy",
+                    "dog",
+                    "hello",
+                    "world",
+                    "this",
+                    "is",
+                    "a",
+                    "test",
+                    "file",
+                    "generated",
+                    "for",
+                    "benchmarking",
+                    "purposes",
+                    "with",
+                    "various",
+                    "compression",
+                    "algorithms",
+                    "and",
+                    "performance",
+                    "analysis",
                 ];
                 while data.len() < size {
                     let word = words[self.rng.gen_range(0..words.len())];
@@ -265,19 +289,19 @@ impl TestDataGenerator {
                 }
             }
         }
-        
+
         data.truncate(size);
         data
     }
-    
+
     /// Generate binary data
     fn generate_binary_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         match level {
             CompressionLevel::Easy => {
                 // Structured binary data with patterns
                 let mut data = vec![0u8; size];
-                for i in 0..size {
-                    data[i] = (i % 256) as u8;
+                for (i, byte) in data.iter_mut().enumerate().take(size) {
+                    *byte = (i % 256) as u8;
                 }
                 data
             }
@@ -287,7 +311,7 @@ impl TestDataGenerator {
                 for chunk in data.chunks_mut(64) {
                     let pattern = self.rng.gen::<u64>();
                     for (i, byte) in chunk.iter_mut().enumerate() {
-                        *byte = (pattern >> (i % 8) * 8) as u8;
+                        *byte = (pattern >> ((i % 8) * 8)) as u8;
                     }
                 }
                 data
@@ -298,40 +322,40 @@ impl TestDataGenerator {
             }
         }
     }
-    
+
     /// Generate mixed data
     fn generate_mixed_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         let mut data = Vec::with_capacity(size);
         let chunk_size = size / 4; // Divide into 4 chunks
-        
+
         // Text chunk
         let text_chunk = self.generate_text_data(chunk_size, level);
         data.extend_from_slice(&text_chunk);
-        
+
         // Binary chunk
         let binary_chunk = self.generate_binary_data(chunk_size, level);
         data.extend_from_slice(&binary_chunk);
-        
+
         // Repetitive chunk
         let repetitive_chunk = self.generate_repetitive_data(chunk_size, level);
         data.extend_from_slice(&repetitive_chunk);
-        
+
         // Random chunk
         let random_chunk = self.generate_random_data(size - data.len(), level);
         data.extend_from_slice(&random_chunk);
-        
+
         data
     }
-    
+
     /// Generate zero-filled data
     fn generate_zero_filled_data(&mut self, size: usize) -> Vec<u8> {
         vec![0u8; size]
     }
-    
+
     /// Generate pattern-based data
     fn generate_pattern_data(&mut self, size: usize, level: &CompressionLevel) -> Vec<u8> {
         let mut data = Vec::with_capacity(size);
-        
+
         match level {
             CompressionLevel::Easy => {
                 // Simple arithmetic progression
@@ -358,10 +382,10 @@ impl TestDataGenerator {
                 }
             }
         }
-        
+
         data
     }
-    
+
     /// Format file size for filename
     fn format_size(&self, size: usize) -> String {
         if size < 1024 {
@@ -374,19 +398,23 @@ impl TestDataGenerator {
             format!("{}gb", size / (1024 * 1024 * 1024))
         }
     }
-    
+
     /// Generate metadata file
     fn generate_metadata(&self, files: &[PathBuf]) -> Result<()> {
         let metadata = serde_json::to_string_pretty(&TestDataMetadata {
             generated_at: chrono::Utc::now().to_rfc3339(),
             total_files: files.len(),
-            files: files.iter().map(|f| f.file_name().unwrap().to_string_lossy().to_string()).collect(),
+            files: files
+                .iter()
+                .map(|f| f.file_name().unwrap().to_string_lossy().to_string())
+                .collect(),
             config: self.config.clone(),
-        }).map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
-        
+        })
+        .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
+
         let metadata_path = self.config.output_dir.join("metadata.json");
         fs::write(metadata_path, metadata)?;
-        
+
         Ok(())
     }
 }
@@ -404,7 +432,7 @@ struct TestDataMetadata {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    
+
     #[test]
     fn test_test_data_generator_creation() {
         let temp_dir = TempDir::new().unwrap();
@@ -415,12 +443,12 @@ mod tests {
             compression_levels: vec![CompressionLevel::Medium],
             seed: Some(42),
         };
-        
+
         let mut generator = TestDataGenerator::new(config);
         let _value = generator.rng.gen::<u8>();
-        assert!(true); // Just test that rng works
+        // Just test that rng works - no assertion needed
     }
-    
+
     #[test]
     fn test_data_generation() {
         let temp_dir = TempDir::new().unwrap();
@@ -431,21 +459,21 @@ mod tests {
             compression_levels: vec![CompressionLevel::Medium],
             seed: Some(42),
         };
-        
+
         let mut generator = TestDataGenerator::new(config);
         let result = generator.generate_all();
         assert!(result.is_ok());
-        
+
         // Check that files were created
         let files: Vec<_> = std::fs::read_dir(temp_dir.path()).unwrap().collect();
         assert!(!files.is_empty());
     }
-    
+
     #[test]
     fn test_size_formatting() {
         let config = TestDataConfig::default();
         let generator = TestDataGenerator::new(config);
-        
+
         assert_eq!(generator.format_size(512), "512b");
         assert_eq!(generator.format_size(2048), "2kb");
         assert_eq!(generator.format_size(2 * 1024 * 1024), "2mb");

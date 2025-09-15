@@ -10,19 +10,19 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Compression error: {0}")]
     Compression(String),
-    
+
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-    
+
     #[error("Memory mapping error: {0}")]
     MemoryMapping(String),
-    
+
     #[error("Threading error: {0}")]
     Threading(String),
-    
+
     #[error("GPU not available: {0}")]
     GpuNotAvailable(String),
 }
@@ -71,7 +71,7 @@ mod tests {
     fn test_error_from_io_error() {
         let io_error = IoError::new(ErrorKind::PermissionDenied, "Permission denied");
         let error: Error = io_error.into();
-        
+
         match error {
             Error::Io(e) => {
                 assert_eq!(e.kind(), ErrorKind::PermissionDenied);
