@@ -40,7 +40,7 @@ csv.workspace = true
 
 # Statistics
 statistics = "0.4"
-statistical = "0.1"
+statistical = "1.0"
 
 # Time and system info
 sysinfo.workspace = true
