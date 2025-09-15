@@ -15,13 +15,9 @@ rust-version.workspace = true
 [package.metadata.deb]
 maintainer = "Parallel-Mengene Team <team@parallel-mengene.dev>"
 copyright = "2024 Parallel-Mengene Team"
-license-file = ["LICENSE-MIT", "LICENSE-APACHE"]
 depends = "$auto"
 section = "utils"
 priority = "optional"
-assets = [
-    ["target/release/parallel-mengene", "usr/bin/", "755"],
-]
 
 [[bin]]
 name = "parallel-mengene"
