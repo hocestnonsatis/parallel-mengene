@@ -112,6 +112,7 @@ jobs:
         else
           cp target/${{ matrix.target }}/release/parallel-mengene release/
         fi
+      shell: bash
         
     - name: Upload release artifacts
       uses: actions/upload-artifact@v4
