@@ -1,0 +1,57 @@
+[package]
+name = "parallel-mengene-benchmarks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Advanced benchmarking tools for parallel-mengene"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "parallel-mengene-bench"
+path = "src/main.rs"
+
+[dependencies]
+# Core dependencies
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Performance
+rayon.workspace = true
+criterion = { version = "0.7", features = ["html_reports"] }
+proptest.workspace = true
+
+# CLI
+clap.workspace = true
+indicatif.workspace = true
+console.workspace = true
+
+# Data processing
+serde = { version = "1.0", features = ["derive"] }
+serde_json.workspace = true
+csv.workspace = true
+
+# Statistics
+statistics = "0.1"
+statistical = "0.1"
+
+# Time and system info
+sysinfo.workspace = true
+humantime.workspace = true
+rand = "0.8"
+chrono.workspace = true
+num_cpus.workspace = true
+
+# Core crates
+parallel-mengene-core = { path = "../parallel-mengene-core" }
+parallel-mengene-pipeline = { path = "../parallel-mengene-pipeline" }
+
+# Testing
+tempfile = "3.8"

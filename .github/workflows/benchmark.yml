@@ -1,0 +1,181 @@
+name: Benchmark
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Run every Sunday at 2 AM
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'crates/parallel-mengene-core/**'
+      - 'crates/parallel-mengene-pipeline/**'
+      - 'crates/parallel-mengene-benchmarks/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-benchmark-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+
+    - name: Build release
+      run: cargo build --release
+
+    - name: Create test data
+      run: |
+        echo "Creating test data for benchmarks..."
+        # Small files (1MB)
+        dd if=/dev/urandom of=test_1mb_random.bin bs=1M count=1
+        dd if=/dev/zero of=test_1mb_zero.bin bs=1M count=1
+        echo "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." > test_1mb_text.txt
+        # Repeat text to make it 1MB
+        for i in {1..1000}; do cat test_1mb_text.txt >> test_1mb_text_full.txt; done
+        mv test_1mb_text_full.txt test_1mb_text.bin
+        
+        # Medium files (100MB)
+        dd if=/dev/urandom of=test_100mb_random.bin bs=1M count=100
+        dd if=/dev/zero of=test_100mb_zero.bin bs=1M count=100
+        
+        # Large files (1GB)
+        dd if=/dev/urandom of=test_1gb_random.bin bs=1M count=1000
+        dd if=/dev/zero of=test_1gb_zero.bin bs=1M count=1000
+
+    - name: Run compression benchmarks
+      run: |
+        echo "=== COMPRESSION BENCHMARKS ===" > benchmark_results.txt
+        echo "Date: $(date)" >> benchmark_results.txt
+        echo "System: $(uname -a)" >> benchmark_results.txt
+        echo "CPU: $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)" >> benchmark_results.txt
+        echo "Memory: $(free -h | grep 'Mem:' | awk '{print $2}')" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        # Test different algorithms and files
+        for file in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$file" ]; then
+            echo "Testing file: $file" >> benchmark_results.txt
+            echo "File size: $(du -h "$file" | cut -f1)" >> benchmark_results.txt
+            
+            # ZSTD compression
+            echo "ZSTD Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_zstd.pmz" --algorithm zstd --level 3 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            
+            # LZ4 compression
+            echo "LZ4 Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_lz4.pmz" --algorithm lz4 --level 9 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            
+            # GZIP compression
+            echo "GZIP Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_gzip.pmz" --algorithm gzip --level 6 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            echo "---" >> benchmark_results.txt
+          fi
+        done
+
+    - name: Run decompression benchmarks
+      run: |
+        echo "=== DECOMPRESSION BENCHMARKS ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        for file in test_*_zstd.pmz test_*_lz4.pmz test_*_gzip.pmz; do
+          if [ -f "$file" ]; then
+            echo "Testing decompression: $file" >> benchmark_results.txt
+            time ./target/release/parallel-mengene decompress "$file" "${file%.*}_decompressed.bin" --algorithm $(echo "$file" | sed 's/.*_\([^_]*\)\.pmz/\1/') 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+          fi
+        done
+
+    - name: Verify data integrity
+      run: |
+        echo "=== DATA INTEGRITY VERIFICATION ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        for original in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$original" ]; then
+            echo "Verifying: $original" >> benchmark_results.txt
+            original_md5=$(md5sum "$original" | cut -d' ' -f1)
+            
+            for decompressed in ${original%.*}_*_decompressed.bin; do
+              if [ -f "$decompressed" ]; then
+                decompressed_md5=$(md5sum "$decompressed" | cut -d' ' -f1)
+                if [ "$original_md5" = "$decompressed_md5" ]; then
+                  echo "✅ $decompressed: INTEGRITY VERIFIED" >> benchmark_results.txt
+                else
+                  echo "❌ $decompressed: INTEGRITY FAILED" >> benchmark_results.txt
+                fi
+              fi
+            done
+            echo "" >> benchmark_results.txt
+          fi
+        done
+
+    - name: Generate performance summary
+      run: |
+        echo "=== PERFORMANCE SUMMARY ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        # Calculate compression ratios
+        for file in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$file" ]; then
+            original_size=$(stat -c%s "$file")
+            echo "File: $file (Original: $original_size bytes)" >> benchmark_results.txt
+            
+            for compressed in ${file%.*}_*.pmz; do
+              if [ -f "$compressed" ]; then
+                compressed_size=$(stat -c%s "$compressed")
+                ratio=$(echo "scale=2; (1 - $compressed_size / $original_size) * 100" | bc -l)
+                echo "  $(basename $compressed): $compressed_size bytes (${ratio}% compression)" >> benchmark_results.txt
+              fi
+            done
+            echo "" >> benchmark_results.txt
+          fi
+        done
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{ github.run_number }}
+        path: benchmark_results.txt
+        retention-days: 30
+
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const results = fs.readFileSync('benchmark_results.txt', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 🚀 Performance Benchmark Results\n\n\`\`\`\n${results}\n\`\`\``
+          });
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f test_*.bin test_*.pmz benchmark_results.txt

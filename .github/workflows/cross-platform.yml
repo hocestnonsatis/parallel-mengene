@@ -1,0 +1,272 @@
+name: Cross-Platform Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 0'  # Run every Sunday at 3 AM
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-linux:
+    name: Test Linux
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-linux-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+
+    - name: Build and test
+      run: |
+        cargo build --release
+        cargo test --verbose --all
+
+    - name: Test compression/decompression
+      run: |
+        echo "Testing compression and decompression on Linux..."
+        echo "Test data" > test.txt
+        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity
+        if cmp -s test.txt test_decompressed.txt; then
+          echo "✅ Data integrity verified on Linux"
+        else
+          echo "❌ Data integrity failed on Linux"
+          exit 1
+        fi
+
+  test-windows:
+    name: Test Windows
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-windows-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build and test
+      run: |
+        cargo build --release
+        cargo test --verbose --all
+
+    - name: Test compression/decompression
+      run: |
+        echo "Testing compression and decompression on Windows..."
+        echo "Test data" > test.txt
+        .\target\release\parallel-mengene.exe compress test.txt test.pmz --algorithm zstd
+        .\target\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity
+        if (Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt) -eq $null) {
+          echo "✅ Data integrity verified on Windows"
+        } else {
+          echo "❌ Data integrity failed on Windows"
+          exit 1
+        }
+
+  test-macos:
+    name: Test macOS
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-macos-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        brew install pkg-config openssl
+
+    - name: Build and test
+      run: |
+        cargo build --release
+        cargo test --verbose --all
+
+    - name: Test compression/decompression
+      run: |
+        echo "Testing compression and decompression on macOS..."
+        echo "Test data" > test.txt
+        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity
+        if cmp -s test.txt test_decompressed.txt; then
+          echo "✅ Data integrity verified on macOS"
+        else
+          echo "❌ Data integrity failed on macOS"
+          exit 1
+        fi
+
+  test-algorithms:
+    name: Test All Algorithms
+    runs-on: ubuntu-latest
+    needs: [test-linux]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-algorithms-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+
+    - name: Build
+      run: cargo build --release
+
+    - name: Test all algorithms
+      run: |
+        echo "Testing all compression algorithms..."
+        echo "Lorem ipsum dolor sit amet, consectetur adipiscing elit." > test.txt
+        
+        # Test ZSTD
+        echo "Testing ZSTD..."
+        ./target/release/parallel-mengene compress test.txt test_zstd.pmz --algorithm zstd --level 3
+        ./target/release/parallel-mengene decompress test_zstd.pmz test_zstd_decompressed.txt --algorithm zstd
+        if cmp -s test.txt test_zstd_decompressed.txt; then
+          echo "✅ ZSTD test passed"
+        else
+          echo "❌ ZSTD test failed"
+          exit 1
+        fi
+        
+        # Test LZ4
+        echo "Testing LZ4..."
+        ./target/release/parallel-mengene compress test.txt test_lz4.pmz --algorithm lz4 --level 9
+        ./target/release/parallel-mengene decompress test_lz4.pmz test_lz4_decompressed.txt --algorithm lz4
+        if cmp -s test.txt test_lz4_decompressed.txt; then
+          echo "✅ LZ4 test passed"
+        else
+          echo "❌ LZ4 test failed"
+          exit 1
+        fi
+        
+        # Test GZIP
+        echo "Testing GZIP..."
+        ./target/release/parallel-mengene compress test.txt test_gzip.pmz --algorithm gzip --level 6
+        ./target/release/parallel-mengene decompress test_gzip.pmz test_gzip_decompressed.txt --algorithm gzip
+        if cmp -s test.txt test_gzip_decompressed.txt; then
+          echo "✅ GZIP test passed"
+        else
+          echo "❌ GZIP test failed"
+          exit 1
+        fi
+        
+        echo "🎉 All algorithm tests passed!"
+
+  performance-comparison:
+    name: Performance Comparison
+    runs-on: ubuntu-latest
+    needs: [test-linux]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-performance-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+
+    - name: Build
+      run: cargo build --release
+
+    - name: Create test data
+      run: |
+        # Create different types of test data
+        dd if=/dev/urandom of=test_random.bin bs=1M count=10
+        dd if=/dev/zero of=test_zero.bin bs=1M count=10
+        echo "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." > test_text.txt
+        # Repeat text to make it larger
+        for i in {1..1000}; do cat test_text.txt >> test_text_large.txt; done
+
+    - name: Run performance tests
+      run: |
+        echo "=== PERFORMANCE COMPARISON ===" > performance_results.txt
+        echo "Date: $(date)" >> performance_results.txt
+        echo "System: $(uname -a)" >> performance_results.txt
+        echo "" >> performance_results.txt
+        
+        for file in test_random.bin test_zero.bin test_text_large.txt; do
+          if [ -f "$file" ]; then
+            echo "Testing file: $file" >> performance_results.txt
+            echo "File size: $(du -h "$file" | cut -f1)" >> performance_results.txt
+            
+            for algorithm in zstd lz4 gzip; do
+              echo "Algorithm: $algorithm" >> performance_results.txt
+              time ./target/release/parallel-mengene compress "$file" "${file%.*}_${algorithm}.pmz" --algorithm "$algorithm" 2>&1 | tee -a performance_results.txt
+              echo "" >> performance_results.txt
+            done
+            echo "---" >> performance_results.txt
+          fi
+        done
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: cross-platform-performance-results
+        path: performance_results.txt
+        retention-days: 30

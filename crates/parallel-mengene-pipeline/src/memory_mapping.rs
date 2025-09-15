@@ -8,6 +8,7 @@ use std::path::Path;
 /// Memory-mapped file reader for efficient large file processing
 pub struct MemoryMappedFile {
     mmap: Mmap,
+    #[allow(dead_code)]
     file: File,
 }
 
