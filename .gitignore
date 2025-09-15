@@ -25,4 +25,76 @@ Thumbs.db
 # Logs
 *.log
 
+# Release artifacts and build outputs
+dist/
+*.deb
+*.exe
+*.app
+*.dmg
+*.pkg
+*.msi
+*.tar.gz
+*.zip
+*.7z
+
+# Platform-specific binaries
+parallel-mengene-linux-x86_64/
+parallel-mengene-macos-x86_64/
+parallel-mengene-windows-x86_64/
+
+# macOS App Bundle
+*.app/
+Parallel Mengene.app/
+
+# Windows installer files
+*.nsi
+installer.nsi
+
+# Debian package files
+debian/
+*.deb
+
+# License files (generated)
+LICENSE-MIT
+LICENSE-APACHE
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Workflow artifacts
+.github/workflows/*.yml.bak
+.github/workflows/*.yaml.bak
+
+# Script outputs
+scripts/*.log
+scripts/*.out
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# Performance profiling
+*.prof
+*.trace
+*.flamegraph
+
+# Memory dumps
+*.core
+*.dmp
+
+# Coverage reports
+coverage/
+*.lcov
+*.gcov
+*.gcno
+*.gcda
+
+# Benchmark results
+criterion/
+target/criterion/
+
+# Custom roadmap (keep template)
 roadmap.md
