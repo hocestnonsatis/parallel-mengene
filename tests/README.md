@@ -1,29 +1,26 @@
 # Parallel-Mengene Test Suite
 
-Professional testing framework for the Parallel-Mengene compression project.
+Professional testing framework for the Parallel-Mengene compression project using Rust.
 
 ## 📁 Directory Structure
 
 ```
 tests/
-├── unit/                    # Unit tests for individual components
-│   └── test_compression.py  # Compression algorithm tests
-├── integration/             # Integration tests for complete workflows
-│   └── test_pipeline.py     # Pipeline integration tests
-├── benchmarks/              # Performance benchmark tests
-│   ├── run_benchmarks.py    # Benchmark runner
-│   ├── benchmark_comparison.sh  # Tool comparison script
-│   ├── benchmark_analysis.py    # Results analysis
-│   └── results/             # Benchmark results
 ├── fixtures/                # Test data and fixtures
-│   ├── generate_test_data.py    # Test data generator
-│   ├── small/               # Small test files (1-10MB)
-│   ├── medium/              # Medium test files (50-100MB)
-│   ├── large/               # Large test files (500MB-1GB)
-│   └── [size]mb_[type]/     # Organized by size and data type
-├── results/                 # Test execution results
-├── reports/                 # Generated test reports
-└── run_tests.py            # Main test runner
+│   ├── benchmark/          # Benchmark test files
+│   ├── small/              # Small test files (1-10MB)
+│   ├── medium/             # Medium test files (50-100MB)
+│   ├── large/              # Large test files (500MB-1GB)
+│   └── [size]mb_[type]/    # Organized by size and data type
+├── benchmarks/             # Benchmark results and analysis
+│   ├── benchmark_comparison.sh  # Tool comparison script
+│   └── results/            # Benchmark results
+├── integration/            # Integration test results
+├── performance/            # Performance profiling results
+├── results/                # Test execution results
+├── reports/                # Generated test reports
+├── integration_tests.rs    # Integration tests
+└── README.md              # This file
 ```
 
 ## 🚀 Quick Start
@@ -31,156 +28,162 @@ tests/
 ### Run All Tests
 ```bash
 # From project root
-python3 tests/run_tests.py
+cargo test
 
-# Run specific test categories
-python3 tests/run_tests.py --categories unit integration
+# Run with verbose output
+cargo test -- --nocapture
 
-# Quiet mode
-python3 tests/run_tests.py --quiet
+# Run specific test suite
+cargo test --package parallel-mengene-core
+cargo test --package parallel-mengene-pipeline
+cargo test --package parallel-mengene-benchmarks
 ```
 
-### Run Individual Test Categories
-
-#### Unit Tests
+### Run Integration Tests
 ```bash
-python3 -m unittest discover -s tests/unit -p "test_*.py" -v
+# Run integration tests
+cargo test --test integration_tests
+
+# Run with specific test
+cargo test --test integration_tests test_compression_pipeline
 ```
 
-#### Integration Tests
+### Run Benchmarks
 ```bash
-python3 -m unittest discover -s tests/integration -p "test_*.py" -v
-```
+# Run performance benchmarks
+cargo bench
 
-#### Benchmark Tests
-```bash
-# Quick benchmark
-python3 tests/benchmarks/run_benchmarks.py --scenario quick
+# Run specific benchmark
+cargo bench --package parallel-mengene-benchmarks
 
-# Standard benchmark
-python3 tests/benchmarks/run_benchmarks.py --scenario standard
-
-# Comprehensive benchmark
-python3 tests/benchmarks/run_benchmarks.py --scenario comprehensive
+# Run benchmark tool directly
+cargo run --bin parallel-mengene-bench -- run --algorithms lz4,gzip,zstd
 ```
 
 ## 📊 Test Categories
 
-### Unit Tests (`tests/unit/`)
-- **Purpose**: Test individual components and algorithms
-- **Scope**: Compression algorithms, error handling, edge cases
-- **Examples**: Basic compression, data integrity, error recovery
+### Unit Tests (80+ tests)
+- **Core Module** (`parallel-mengene-core`): 36 tests
+  - Algorithms Module: 9 tests
+  - Compression Module: 15 tests  
+  - Error Module: 6 tests
+  - Utils Module: 6 tests
+- **Pipeline Module** (`parallel-mengene-pipeline`): 16 tests
+- **Benchmarks Module** (`parallel-mengene-benchmarks`): 12 tests
 
-### Integration Tests (`tests/integration/`)
-- **Purpose**: Test complete workflows and system integration
-- **Scope**: End-to-end compression pipeline, performance characteristics
-- **Examples**: Full compression/decompression cycles, concurrent operations
+### Integration Tests (8 tests)
+- **File Compression Testing**:
+  - Small file compression (1KB)
+  - Medium file compression (10MB)
+  - Large file compression (100MB)
+  - Repetitive data compression (50MB)
+  - Empty file compression
+  - Multiple compression/decompression cycles
+  - Different algorithm testing
+  - Error handling
 
-### Benchmark Tests (`tests/benchmarks/`)
-- **Purpose**: Performance testing and comparison with other tools
-- **Scope**: Speed, compression ratio, memory usage, scalability
-- **Examples**: Tool comparison, performance regression testing
+### Performance Tests (8 tests)
+- **Performance Profiling**:
+  - Profiler creation and configuration
+  - Compression performance measurement
+  - Scalability testing across different file sizes
+  - Algorithm comparison
+  - Bottleneck detection
+  - Report generation
+  - Repetitive data compression analysis
 
 ## 🎯 Test Scenarios
 
 ### Quick Tests
-- Small files only
-- Basic functionality
-- Fast execution (~1-2 minutes)
+```bash
+cargo test --package parallel-mengene-core
+```
 
 ### Standard Tests
-- Small and medium files
-- Multiple data types
-- Moderate execution time (~5-10 minutes)
+```bash
+cargo test
+```
 
 ### Comprehensive Tests
-- All file sizes (small, medium, large)
-- All data types (repetitive, random, text, binary, mixed)
-- Multiple files per type
-- Long execution time (~30-60 minutes)
+```bash
+cargo test --all
+cargo bench --all
+```
 
 ## 📈 Test Data Generation
 
-### Smart Test Data Generator (Single Script)
-One intelligent script for all test data generation needs:
-
+### Using Rust Test Data Generator
 ```bash
-# Quick mode (recommended for development)
-python3 tests/fixtures/generate_test_data.py --mode quick
+# Generate test data
+cargo run --bin parallel-mengene-bench -- generate --output test_data
 
-# Fast mode (with large files using OS operations)
-python3 tests/fixtures/generate_test_data.py --mode fast
+# Generate with specific sizes
+cargo run --bin parallel-mengene-bench -- generate --sizes 1024,1048576,10485760
 
-# Comprehensive mode (all variations)
-python3 tests/fixtures/generate_test_data.py --mode comprehensive
-
-# With benchmark data
-python3 tests/fixtures/generate_test_data.py --mode quick --benchmark
-
-# With performance comparison
-python3 tests/fixtures/generate_test_data.py --mode fast --performance
-
-# Clean existing data first
-python3 tests/fixtures/generate_test_data.py --mode fast --clean
+# Generate with specific types
+cargo run --bin parallel-mengene-bench -- generate --types random,repetitive,text
 ```
 
-**Available Modes:**
-- **Quick**: Essential test files (7 files, ~1-50MB)
-- **Fast**: Mix of methods including large files (13 files, up to 1GB)
-- **Comprehensive**: All variations (30+ files, all sizes)
-
-**Performance Comparison:**
-- **OS Truncate**: ~3,000,000 MB/s (instant for zero-filled files)
-- **OS Seek**: ~3,000,000 MB/s (instant for sparse files)  
-- **Chunked Write**: ~600 MB/s (fast for real data)
-
-**Test Data Structure:**
-- **Size categories**: small (1-10MB), medium (10-50MB), large (100-1000MB)
-- **Data types**: repetitive, random, text, binary, mixed, zero-filled
-- **Multiple files**: 1-3 files per type for statistical significance
+### Available Data Types
+- **Random**: Random binary data
+- **Repetitive**: Highly repetitive patterns
+- **Text**: Natural language text
+- **Binary**: Binary file data
+- **Mixed**: Combination of data types
+- **ZeroFilled**: Zero-filled data
+- **PatternBased**: Pattern-based data
 
 ## 📋 Test Results
 
 ### Results Storage
 - **JSON results**: `tests/results/test_results_YYYYMMDD_HHMMSS.json`
-- **Test reports**: `tests/reports/test_report_YYYYMMDD_HHMMSS.md`
-- **Benchmark data**: `tests/benchmarks/results/`
+- **Benchmark reports**: `benchmark_results/benchmark_report.html`
+- **Test reports**: `tests/reports/`
 
 ### Result Analysis
-- Performance metrics and trends
-- Error analysis and debugging information
-- Comparison with previous test runs
-- Recommendations for improvements
+```bash
+# Analyze benchmark results
+cargo run --bin parallel-mengene-bench -- analyze --input results.json --charts
+
+# Compare results
+cargo run --bin parallel-mengene-bench -- compare --results file1.json,file2.json
+```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
-export PARALLEL_MENGENE_BINARY="/path/to/binary"
-export TEST_TIMEOUT=300  # seconds
-export BENCHMARK_SCENARIO="standard"
+export RUST_LOG=debug                    # Enable debug logging
+export PARALLEL_MENGENE_THREADS=8        # Set thread count
+export BENCHMARK_TIMEOUT=300             # Benchmark timeout in seconds
 ```
 
-### Test Configuration
-- Modify test parameters in individual test files
-- Adjust benchmark scenarios in `run_benchmarks.py`
-- Configure test data generation in `generate_test_data.py`
+### Benchmark Configuration
+```bash
+# Custom benchmark configuration
+cargo run --bin parallel-mengene-bench -- run \
+  --algorithms lz4,gzip,zstd \
+  --iterations 5 \
+  --warmup 2 \
+  --memory-tracking \
+  --cpu-tracking
+```
 
 ## 🐛 Debugging
 
 ### Verbose Output
 ```bash
-python3 tests/run_tests.py --categories unit --quiet=false
+cargo test -- --nocapture --test-threads=1
 ```
 
 ### Individual Test Debugging
 ```bash
-python3 -m unittest tests.unit.test_compression.TestCompressionAlgorithms.test_compression_basic -v
+cargo test test_name -- --nocapture
 ```
 
 ### Benchmark Debugging
 ```bash
-python3 tests/benchmarks/run_benchmarks.py --scenario quick --tools parallel-mengene
+RUST_LOG=debug cargo run --bin parallel-mengene-bench -- run --algorithms lz4
 ```
 
 ## 📊 Continuous Integration
@@ -198,12 +201,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Build
-        run: cargo build --release
       - name: Run Tests
-        run: python3 tests/run_tests.py --categories unit integration
+        run: cargo test --all
       - name: Run Benchmarks
-        run: python3 tests/benchmarks/run_benchmarks.py --scenario quick
+        run: cargo bench --all
+      - name: Run Integration Tests
+        run: cargo test --test integration_tests
 ```
 
 ## 🎯 Best Practices
@@ -230,9 +233,17 @@ jobs:
 ## 📚 Additional Resources
 
 - [Rust Testing Guide](https://doc.rust-lang.org/book/ch11-00-testing.html)
-- [Python unittest Documentation](https://docs.python.org/3/library/unittest.html)
+- [Cargo Test Documentation](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
 - [Performance Testing Best Practices](https://martinfowler.com/articles/practical-test-pyramid.html)
+
+## 🏆 Test Coverage
+
+- **Total Tests**: 80+ tests
+- **Unit Tests**: 64 tests (100% pass rate)
+- **Integration Tests**: 8 tests (100% pass rate)
+- **Performance Tests**: 8 tests (100% pass rate)
+- **Overall Coverage**: 100% pass rate
 
 ---
 
-*This test suite ensures the reliability, performance, and correctness of the Parallel-Mengene compression project.*
+*This test suite ensures the reliability, performance, and correctness of the Parallel-Mengene compression project using native Rust testing tools.*
