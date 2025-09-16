@@ -358,8 +358,12 @@ jobs:
         .\target\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
         
         # Verify data integrity on Windows
-        if (Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt) -eq $null) {
-          echo "✅ Data integrity verified on ${{ matrix.name }}"
+        if ((Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt)).Length -eq 0) {
+  echo "✅ Data integrity verified on Windows"
+} else {
+  echo "❌ Data integrity failed on Windows"
+  exit 1
+}}"
         } else {
           echo "❌ Data integrity failed on ${{ matrix.name }}"
           exit 1
