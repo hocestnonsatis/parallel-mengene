@@ -359,13 +359,9 @@ jobs:
         
         # Verify data integrity on Windows
         if ((Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt)).Length -eq 0) {
-  echo "✅ Data integrity verified on Windows"
-} else {
-  echo "❌ Data integrity failed on Windows"
-  exit 1
-}}"
+          echo "✅ Data integrity verified on Windows"
         } else {
-          echo "❌ Data integrity failed on ${{ matrix.name }}"
+          echo "❌ Data integrity failed on Windows"
           exit 1
         }
 
