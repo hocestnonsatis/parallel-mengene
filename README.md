@@ -28,7 +28,7 @@ Parallel-Mengene is a cutting-edge file compression tool that leverages advanced
 - 🧠 **Intelligent Pipeline**: Automatic workload distribution and optimization
 - 📊 **Memory Efficient**: Memory-mapped files and streaming compression
 - 🔒 **Data Integrity**: 100% verified compression/decompression cycles
-- 🌍 **Cross-Platform**: Linux, Windows, and macOS support
+- 🌍 **Cross-Platform**: Linux and Windows support
 - 📈 **Comprehensive Benchmarking**: Built-in performance analysis tools
 - 🛡️ **Enterprise Ready**: Security scanning, dependency management, CI/CD
 
@@ -63,15 +63,16 @@ parallel-mengene/
 - **Git**: For cloning the repository
 - **Build Tools**: 
   - Linux: `build-essential`, `pkg-config`, `libssl-dev`
-  - macOS: `pkg-config`, `openssl`
-  - Windows: Visual Studio Build Tools
+  - Windows: Visual Studio Build Tools (for local builds)
 
 ### Installation
 
 #### Option 1: Download Pre-built Binary (Recommended)
 
 1. Go to [Releases](https://github.com/hocestnonsatis/parallel-mengene/releases)
-2. Download `parallel-mengene` for your platform
+2. Download the appropriate binary for your system:
+   - **Linux**: `parallel-mengene` (x86_64)
+   - **Windows**: `parallel-mengene.exe` (x86_64)
 3. Make it executable:
    ```bash
    chmod +x parallel-mengene
@@ -121,7 +122,7 @@ Our optimized CI/CD pipeline runs on a self-hosted runner for maximum speed and 
 |--------|-------|-------------|
 | **Execution Time** | ~2-5 minutes | 60-70% faster than GitHub hosted |
 | **Cache Hit Rate** | 95%+ | Unified cache strategy |
-| **Parallel Jobs** | 5 jobs | Optimized job dependencies |
+| **Parallel Jobs** | 5 jobs | Quality checks + Docker builds |
 | **Success Rate** | 100% | All tests passing consistently |
 
 ### 🔧 Workflow Features
@@ -180,11 +181,9 @@ cargo build --release --target x86_64-unknown-linux-gnu
 # Windows (x86_64)
 cargo build --release --target x86_64-pc-windows-msvc
 
-# macOS (x86_64)
-cargo build --release --target x86_64-apple-darwin
-
-# macOS (ARM64)
-cargo build --release --target aarch64-apple-darwin
+# Windows (cross-compilation)
+rustup target add x86_64-pc-windows-gnu
+cargo build --release --target x86_64-pc-windows-gnu
 ```
 
 ## 📚 Documentation
@@ -226,7 +225,7 @@ parallel-mengene compress huge_file.bin compressed.pmz --algorithm zstd --stream
 The project includes extensive testing with **100% success rate**:
 
 - **80+ Tests**: Unit, integration, and performance tests
-- **Cross-Platform**: Linux, Windows, macOS compatibility  
+- **Cross-Platform**: Linux, Windows compatibility  
 - **Data Integrity**: MD5 verification for all compression cycles
 - **Performance**: Automated benchmarking and profiling
 - **Security**: Dependency scanning and vulnerability checks
