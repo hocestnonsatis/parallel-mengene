@@ -271,13 +271,13 @@ jobs:
     - name: Build release
       run: cargo build --release --target ${{ matrix.target }}
     
-    - name: Test binary
-      run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          ./target/${{ matrix.target }}/release/parallel-mengene.exe --help
-        else
-          ./target/${{ matrix.target }}/release/parallel-mengene --help
-        fi
+    - name: Test binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: ./target/${{ matrix.target }}/release/parallel-mengene --help
+    
+    - name: Test binary (Windows)
+      if: matrix.os == 'windows-latest'
+      run: .\target\${{ matrix.target }}\release\parallel-mengene.exe --help
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -334,34 +334,39 @@ jobs:
     - name: Build
       run: cargo build --release
     
-    - name: Test compression/decompression
+    - name: Test compression/decompression (Unix)
+      if: matrix.os != 'windows-latest'
       run: |
         echo "Testing compression and decompression on ${{ matrix.name }}..."
         echo "Test data" > test.txt
         
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          .\target\release\parallel-mengene.exe compress test.txt test.pmz --algorithm zstd
-          .\target\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
-          
-          # Verify data integrity on Windows
-          if (Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt) -eq $null) {
-            echo "✅ Data integrity verified on ${{ matrix.name }}"
-          } else {
-            echo "❌ Data integrity failed on ${{ matrix.name }}"
-            exit 1
-          }
+        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity on Unix-like systems
+        if cmp -s test.txt test_decompressed.txt; then
+          echo "✅ Data integrity verified on ${{ matrix.name }}"
         else
-          ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
-          ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
-          
-          # Verify data integrity on Unix-like systems
-          if cmp -s test.txt test_decompressed.txt; then
-            echo "✅ Data integrity verified on ${{ matrix.name }}"
-          else
-            echo "❌ Data integrity failed on ${{ matrix.name }}"
-            exit 1
-          fi
+          echo "❌ Data integrity failed on ${{ matrix.name }}"
+          exit 1
         fi
+
+    - name: Test compression/decompression (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "Testing compression and decompression on ${{ matrix.name }}..."
+        echo "Test data" > test.txt
+        
+        .\target\release\parallel-mengene.exe compress test.txt test.pmz --algorithm zstd
+        .\target\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity on Windows
+        if (Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt) -eq $null) {
+          echo "✅ Data integrity verified on ${{ matrix.name }}"
+        } else {
+          echo "❌ Data integrity failed on ${{ matrix.name }}"
+          exit 1
+        }
 
   algorithm-tests:
     name: 🔬 Algorithm Tests
