@@ -96,18 +96,17 @@ impl MemoryMonitor {
     fn read_memory_info(&self) -> Result<MemoryStats> {
         let mut system_guard = self.system.lock().unwrap();
         system_guard.refresh_memory();
-        
+
         let total_memory = system_guard.total_memory();
         let available_memory = system_guard.available_memory();
         let used_memory = system_guard.used_memory();
-        
+
         Ok(MemoryStats::new(
             total_memory,
             available_memory,
             used_memory,
         ))
     }
-
 
     /// Check if memory usage is above a threshold
     pub fn is_memory_usage_high(&self, threshold_percentage: f64) -> Result<bool> {

@@ -8,7 +8,11 @@ use tempfile::tempdir;
 /// Helper function to create test data of various sizes
 fn create_test_data(size_mb: usize) -> Vec<u8> {
     // If size_mb is 0, create 1KB of data instead
-    let actual_size = if size_mb == 0 { 1024 } else { size_mb * 1024 * 1024 };
+    let actual_size = if size_mb == 0 {
+        1024
+    } else {
+        size_mb * 1024 * 1024
+    };
     let mut data = Vec::with_capacity(actual_size);
     for i in 0..actual_size {
         data.push((i % 256) as u8);
