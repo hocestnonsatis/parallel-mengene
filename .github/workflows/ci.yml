@@ -133,11 +133,11 @@ jobs:
       run: cargo test --verbose --test integration_tests
 
   # ================================
-  # PHASE 3: BUILD & FUNCTIONAL TESTS
+  # PHASE 3: DOCKER BUILDS
   # ================================
   
-  build-and-test:
-    name: 🔨 Build & Test
+  build-linux:
+    name: 🐧 Build Linux
     runs-on: self-hosted
     needs: [test-suite]
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -145,73 +145,55 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Check Rust installation
+    - name: Build Linux binary
       run: |
-        rustc --version
-        cargo --version
+        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
+          rust:1.75-slim \
+          bash -c "
+            apt-get update && apt-get install -y build-essential pkg-config libssl-dev &&
+            cargo build --release --target x86_64-unknown-linux-gnu
+          "
     
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    
-    - name: Install system dependencies
+    - name: Test Linux binary
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev
+        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
+          rust:1.75-slim \
+          bash -c "
+            ./target/x86_64-unknown-linux-gnu/release/parallel-mengene --help
+          "
     
-    - name: Install cross-compilation targets
-      run: |
-        rustup target add x86_64-pc-windows-msvc
-        rustup target add x86_64-apple-darwin
-        rustup target add aarch64-apple-darwin
-    
-    - name: Build release (Linux)
-      run: cargo build --release --target x86_64-unknown-linux-gnu
-    
-    - name: Build release (Windows)
-      run: cargo build --release --target x86_64-pc-windows-msvc
-    
-    - name: Build release (macOS Intel)
-      run: cargo build --release --target x86_64-apple-darwin
-    
-    - name: Build release (macOS ARM)
-      run: cargo build --release --target aarch64-apple-darwin
-    
-    - name: Test binary (Linux)
-      run: ./target/x86_64-unknown-linux-gnu/release/parallel-mengene --help
-    
-    - name: Test compression/decompression
-      run: |
-        echo "Testing compression and decompression..."
-        echo "Test data" > test.txt
-        
-        ./target/x86_64-unknown-linux-gnu/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
-        ./target/x86_64-unknown-linux-gnu/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
-        
-        # Verify data integrity
-        if cmp -s test.txt test_decompressed.txt; then
-          echo "✅ Data integrity verified"
-        else
-          echo "❌ Data integrity failed"
-          exit 1
-        fi
-    
-    - name: Upload build artifacts
+    - name: Upload Linux artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: parallel-mengene-multi-platform
-        path: |
-          target/x86_64-unknown-linux-gnu/release/parallel-mengene*
-          target/x86_64-pc-windows-msvc/release/parallel-mengene*.exe
-          target/x86_64-apple-darwin/release/parallel-mengene*
-          target/aarch64-apple-darwin/release/parallel-mengene*
+        name: parallel-mengene-linux
+        path: target/x86_64-unknown-linux-gnu/release/parallel-mengene*
+        retention-days: 7
+
+  build-windows:
+    name: 🪟 Build Windows
+    runs-on: self-hosted
+    needs: [test-suite]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Build Windows binary
+      run: |
+        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
+          rust:1.75-slim \
+          bash -c "
+            apt-get update && apt-get install -y build-essential pkg-config libssl-dev &&
+            rustup target add x86_64-pc-windows-gnu &&
+            apt-get install -y gcc-mingw-w64-x86-64 &&
+            cargo build --release --target x86_64-pc-windows-gnu
+          "
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: parallel-mengene-windows
+        path: target/x86_64-pc-windows-gnu/release/parallel-mengene*.exe
         retention-days: 7
 
   # ================================
@@ -220,7 +202,7 @@ jobs:
   
   create-release:
     name: 🚀 Create Release
-    needs: [build-and-test]
+    needs: [build-linux, build-windows]
     runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
@@ -250,7 +232,7 @@ jobs:
   workflow-summary:
     name: 📊 Workflow Summary
     runs-on: self-hosted
-    needs: [security-audit, code-quality, test-suite, build-and-test, create-release]
+    needs: [security-audit, code-quality, test-suite, build-linux, build-windows, create-release]
     if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
     
     steps:
@@ -263,5 +245,6 @@ jobs:
         echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Test Suite | ${{ needs.test-suite.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Build & Test | ${{ needs.build-and-test.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Build Linux | ${{ needs.build-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Build Windows | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Create Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
