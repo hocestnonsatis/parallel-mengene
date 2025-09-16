@@ -1,4 +1,4 @@
-name: Fast CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,24 +6,87 @@ on:
       - 'v*'
   workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-
 jobs:
   # ================================
-  # PHASE 1: PARALLEL QUALITY CHECKS
+  # PHASE 1: QUALITY CHECKS
   # ================================
   
   security-audit:
     name: 🔒 Security Audit
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
       with:
-        clean: false
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Install security tools
+      run: |
+        cargo install cargo-audit
+        cargo install cargo-outdated
+    
+    - name: Run security audit
+      run: cargo audit
+    
+    - name: Run license check
+      run: cargo deny check licenses
+    
+    - name: Check for outdated dependencies
+      run: cargo outdated --exit-code 1
+
+  code-quality:
+    name: 🧹 Code Quality
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Check formatting
+      run: cargo fmt -- --check
+    
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+
+  test-suite:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    needs: [security-audit, code-quality]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v4
     
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -39,221 +102,126 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Check Rust installation
-      run: |
-        rustc --version
-        cargo --version
-    
-    - name: Install security tools (if not already installed)
-      run: |
-        command -v cargo-audit >/dev/null 2>&1 || cargo install cargo-audit
-        command -v cargo-deny >/dev/null 2>&1 || cargo install cargo-deny
-        command -v cargo-outdated >/dev/null 2>&1 || cargo install cargo-outdated
-    
-    - name: Run security audit
-      run: cargo audit
-    
-    - name: Run license check
-      run: cargo deny check
-    
-    - name: Check for outdated dependencies
-      run: cargo outdated --exit-code 1
-
-  code-quality:
-    name: 🧹 Code Quality
-    runs-on: self-hosted
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        clean: false
-    
-    - name: Clean target directory
-      run: |
-        sudo rm -rf target/ || true
-        mkdir -p target/
-    
-    - name: Check Rust installation
-      run: |
-        rustc --version
-        cargo --version
-        rustfmt --version
-        cargo clippy --version
-    
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    
-    - name: Check system dependencies
-      run: |
-        echo "System dependencies check skipped - using pre-installed tools"
-    
-    - name: Check formatting
-      run: cargo fmt --all -- --check
-    
-    - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
-
-  # ================================
-  # PHASE 2: PARALLEL TESTING
-  # ================================
-  
-  test-suite:
-    name: 🧪 Test Suite
-    runs-on: self-hosted
-    needs: [security-audit, code-quality]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        clean: false
-    
-    - name: Clean target directory
-      run: |
-        sudo rm -rf target/ || true
-        mkdir -p target/
-    
-    - name: Check Rust installation
-      run: |
-        rustc --version
-        cargo --version
-    
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    
-    - name: Check system dependencies
-      run: |
-        echo "System dependencies check skipped - using pre-installed tools"
-    
     - name: Run unit tests
-      run: cargo test --verbose --all
+      run: cargo test --verbose
     
     - name: Run integration tests
-      run: cargo test --verbose --test integration_tests
+      run: cargo test --test integration_tests --verbose
 
   # ================================
-  # PHASE 3: DOCKER BUILDS
+  # PHASE 2: BUILD & RELEASE
   # ================================
   
   build-linux:
     name: 🐧 Build Linux
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [test-suite]
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
       with:
-        clean: false
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
     
     - name: Build Linux binary
-      run: |
-        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
-          rust:latest \
-          bash -c "
-            apt-get update && apt-get install -y build-essential pkg-config libssl-dev &&
-            cargo build --release --target x86_64-unknown-linux-gnu --target-dir target/linux
-          "
+      run: cargo build --release
     
     - name: Test Linux binary
-      run: |
-        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
-          rust:latest \
-          bash -c "
-            ./target/linux/x86_64-unknown-linux-gnu/release/parallel-mengene --help
-          "
+      run: ./target/release/parallel-mengene --help
     
     - name: Upload Linux artifacts
       uses: actions/upload-artifact@v4
       with:
         name: parallel-mengene-linux
-        path: target/linux/x86_64-unknown-linux-gnu/release/parallel-mengene*
+        path: target/release/parallel-mengene*
         retention-days: 7
 
   build-windows:
     name: 🪟 Build Windows
-    runs-on: self-hosted
+    runs-on: windows-latest
     needs: [test-suite]
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
       with:
-        clean: false
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
     
     - name: Build Windows binary
-      run: |
-        sudo docker run --rm -v "$PWD":/workspace -w /workspace \
-          rust:latest \
-          bash -c "
-            apt-get update && apt-get install -y build-essential pkg-config libssl-dev &&
-            rustup target add x86_64-pc-windows-gnu &&
-            apt-get install -y gcc-mingw-w64-x86-64 &&
-            cargo build --release --target x86_64-pc-windows-gnu --target-dir target/windows
-          "
+      run: cargo build --release
+    
+    - name: Test Windows binary
+      run: .\target\release\parallel-mengene.exe --help
     
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
       with:
         name: parallel-mengene-windows
-        path: target/windows/x86_64-pc-windows-gnu/release/parallel-mengene*.exe
+        path: target/release/parallel-mengene*.exe
         retention-days: 7
 
-  # ================================
-  # PHASE 4: RELEASE (ONLY FOR TAGS)
-  # ================================
-  
   create-release:
     name: 🚀 Create Release
     needs: [build-linux, build-windows]
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
-    - uses: actions/checkout@v5
-      with:
-        clean: false
+    - uses: actions/checkout@v4
     
-    - name: Download all artifacts
+    - name: Download Linux artifacts
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        name: parallel-mengene-linux
+        path: ./artifacts/linux/
+    
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: parallel-mengene-windows
+        path: ./artifacts/windows/
     
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          artifacts/*/parallel-mengene*
-        generate_release_notes: true
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
         draft: false
         prerelease: false
+        generate_release_notes: true
+        files: |
+          ./artifacts/linux/parallel-mengene*
+          ./artifacts/windows/parallel-mengene*.exe
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ================================
-  # WORKFLOW SUMMARY
-  # ================================
-  
   workflow-summary:
     name: 📊 Workflow Summary
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [security-audit, code-quality, test-suite, build-linux, build-windows, create-release]
     if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
     
@@ -270,3 +238,8 @@ jobs:
         echo "| Build Linux | ${{ needs.build-linux.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Build Windows | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Create Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🚀 Release Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
