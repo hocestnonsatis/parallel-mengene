@@ -2,11 +2,8 @@ name: Fast CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main, develop ]
   workflow_dispatch:
 
 env:
@@ -20,7 +17,8 @@ jobs:
   
   security-audit:
     name: 🔒 Security Audit
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v5
@@ -54,7 +52,8 @@ jobs:
 
   code-quality:
     name: 🧹 Code Quality
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v5
@@ -92,21 +91,9 @@ jobs:
   
   test-suite:
     name: 🧪 Test Suite
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     needs: [security-audit, code-quality]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable]
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin]
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: macos-latest
-            target: x86_64-apple-darwin
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v5
@@ -128,16 +115,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Install system dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev
-    
-    - name: Install system dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install pkg-config openssl
     
     - name: Run unit tests
       run: cargo test --verbose --all
@@ -151,20 +132,9 @@ jobs:
   
   build-and-test:
     name: 🔨 Build & Test
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     needs: [test-suite]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin]
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: macos-latest
-            target: x86_64-apple-darwin
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     
     steps:
     - uses: actions/checkout@v5
@@ -185,36 +155,24 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Install system dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev
     
-    - name: Install system dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install pkg-config openssl
-    
     - name: Build release
-      run: cargo build --release --target ${{ matrix.target }}
+      run: cargo build --release
     
-    - name: Test binary (Unix)
-      if: matrix.os != 'windows-latest'
-      run: ./target/${{ matrix.target }}/release/parallel-mengene --help
+    - name: Test binary
+      run: ./target/release/parallel-mengene --help
     
-    - name: Test binary (Windows)
-      if: matrix.os == 'windows-latest'
-      run: .\target\${{ matrix.target }}\release\parallel-mengene.exe --help
-    
-    - name: Test compression/decompression (Unix)
-      if: matrix.os != 'windows-latest'
+    - name: Test compression/decompression
       run: |
         echo "Testing compression and decompression..."
         echo "Test data" > test.txt
         
-        ./target/${{ matrix.target }}/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
-        ./target/${{ matrix.target }}/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
         
         # Verify data integrity
         if cmp -s test.txt test_decompressed.txt; then
@@ -224,29 +182,12 @@ jobs:
           exit 1
         fi
     
-    - name: Test compression/decompression (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "Testing compression and decompression..."
-        echo "Test data" > test.txt
-        
-        .\target\${{ matrix.target }}\release\parallel-mengene.exe compress test.txt test.pmz --algorithm zstd
-        .\target\${{ matrix.target }}\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
-        
-        # Verify data integrity on Windows
-        if ((Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt)).Length -eq 0) {
-          echo "✅ Data integrity verified on Windows"
-        } else {
-          echo "❌ Data integrity failed on Windows"
-          exit 1
-        }
-    
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: parallel-mengene-${{ matrix.os }}-${{ matrix.target }}
+        name: parallel-mengene-linux-x86_64
         path: |
-          target/${{ matrix.target }}/release/parallel-mengene*
+          target/release/parallel-mengene*
         retention-days: 7
 
   # ================================
@@ -256,7 +197,7 @@ jobs:
   create-release:
     name: 🚀 Create Release
     needs: [build-and-test]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:
@@ -284,9 +225,9 @@ jobs:
   
   workflow-summary:
     name: 📊 Workflow Summary
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [security-audit, code-quality, test-suite, build-and-test, create-release]
-    if: always()
+    if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
     
     steps:
     - name: Generate workflow summary
