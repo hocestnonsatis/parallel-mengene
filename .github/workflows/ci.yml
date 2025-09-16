@@ -65,10 +65,12 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
+    - name: Check Rust installation
+      run: |
+        rustc --version
+        cargo --version
+        rustfmt --version
+        cargo clippy --version
     
     - name: Cache cargo registry
       uses: actions/cache@v4
