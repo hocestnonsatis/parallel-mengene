@@ -101,3 +101,8 @@ roadmap.md
 
 # GitHub Actions self-hosted runner
 actions-runner/
+
+# Test results and artifacts
+tests/results/*.bin
+tests/results/*.pmz
+tests/results/*.json
