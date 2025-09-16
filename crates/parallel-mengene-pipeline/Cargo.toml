@@ -24,6 +24,7 @@ memmap2.workspace = true
 crossbeam-channel.workspace = true
 num_cpus.workspace = true
 byteorder.workspace = true
+sysinfo.workspace = true
 
 # Core crate
 parallel-mengene-core = { path = "../parallel-mengene-core" }

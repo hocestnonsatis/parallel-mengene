@@ -3,6 +3,7 @@
 use parallel_mengene_core::error::Result;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use sysinfo::System;
 
 /// Memory usage statistics
 #[derive(Debug, Clone)]
@@ -37,6 +38,7 @@ pub struct MemoryMonitor {
     stats: Arc<Mutex<Option<MemoryStats>>>,
     update_interval: Duration,
     last_update: Arc<Mutex<Instant>>,
+    system: Arc<Mutex<System>>,
 }
 
 impl MemoryMonitor {
@@ -46,6 +48,7 @@ impl MemoryMonitor {
             stats: Arc::new(Mutex::new(None)),
             update_interval: Duration::from_secs(1), // Update every second
             last_update: Arc::new(Mutex::new(Instant::now())),
+            system: Arc::new(Mutex::new(System::new_all())),
         }
     }
 
@@ -55,6 +58,7 @@ impl MemoryMonitor {
             stats: Arc::new(Mutex::new(None)),
             update_interval,
             last_update: Arc::new(Mutex::new(Instant::now())),
+            system: Arc::new(Mutex::new(System::new_all())),
         }
     }
 
@@ -88,21 +92,15 @@ impl MemoryMonitor {
         }
     }
 
-    /// Read memory information from /proc/meminfo (Linux)
+    /// Read memory information using sysinfo (cross-platform)
     fn read_memory_info(&self) -> Result<MemoryStats> {
-        let meminfo = std::fs::read_to_string("/proc/meminfo")?;
-        let mut total_memory = 0u64;
-        let mut available_memory = 0u64;
-
-        for line in meminfo.lines() {
-            if line.starts_with("MemTotal:") {
-                total_memory = self.parse_meminfo_line(line)?;
-            } else if line.starts_with("MemAvailable:") {
-                available_memory = self.parse_meminfo_line(line)?;
-            }
-        }
-
-        let used_memory = total_memory.saturating_sub(available_memory);
+        let mut system_guard = self.system.lock().unwrap();
+        system_guard.refresh_memory();
+        
+        let total_memory = system_guard.total_memory();
+        let available_memory = system_guard.available_memory();
+        let used_memory = system_guard.used_memory();
+        
         Ok(MemoryStats::new(
             total_memory,
             available_memory,
@@ -110,25 +108,6 @@ impl MemoryMonitor {
         ))
     }
 
-    /// Parse a line from /proc/meminfo
-    fn parse_meminfo_line(&self, line: &str) -> Result<u64> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 2 {
-            parts[1]
-                .parse::<u64>()
-                .map(|kb| kb * 1024) // Convert KB to bytes
-                .map_err(|e| {
-                    parallel_mengene_core::error::Error::InvalidInput(format!(
-                        "Failed to parse memory info: {}",
-                        e
-                    ))
-                })
-        } else {
-            Err(parallel_mengene_core::error::Error::InvalidInput(
-                "Invalid meminfo line format".to_string(),
-            ))
-        }
-    }
 
     /// Check if memory usage is above a threshold
     pub fn is_memory_usage_high(&self, threshold_percentage: f64) -> Result<bool> {
