@@ -68,6 +68,21 @@ parallel-mengene/
 
 ### Installation
 
+#### Option 1: Download Pre-built Binary (Recommended)
+
+1. Go to [Releases](https://github.com/hocestnonsatis/parallel-mengene/releases)
+2. Download `parallel-mengene` for your platform
+3. Make it executable:
+   ```bash
+   chmod +x parallel-mengene
+   ```
+4. Move to your PATH (optional):
+   ```bash
+   sudo mv parallel-mengene /usr/local/bin/
+   ```
+
+#### Option 2: Build from Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/hocestnonsatis/parallel-mengene.git
