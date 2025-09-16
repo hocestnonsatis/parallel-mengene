@@ -37,9 +37,16 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Install security tools
+    - name: Check Rust installation
       run: |
-        cargo install cargo-audit cargo-deny cargo-outdated
+        rustc --version
+        cargo --version
+    
+    - name: Install security tools (if not already installed)
+      run: |
+        command -v cargo-audit >/dev/null 2>&1 || cargo install cargo-audit
+        command -v cargo-deny >/dev/null 2>&1 || cargo install cargo-deny
+        command -v cargo-outdated >/dev/null 2>&1 || cargo install cargo-outdated
     
     - name: Run security audit
       run: cargo audit
@@ -98,11 +105,10 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: stable
-        targets: x86_64-unknown-linux-gnu
+    - name: Check Rust installation
+      run: |
+        rustc --version
+        cargo --version
     
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -139,10 +145,10 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: x86_64-unknown-linux-gnu
+    - name: Check Rust installation
+      run: |
+        rustc --version
+        cargo --version
     
     - name: Cache cargo registry
       uses: actions/cache@v4
