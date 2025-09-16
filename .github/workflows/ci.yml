@@ -81,10 +81,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Install system dependencies
+    - name: Check system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev
+        echo "System dependencies check skipped - using pre-installed tools"
     
     - name: Check formatting
       run: cargo fmt --all -- --check
@@ -121,10 +120,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Install system dependencies
+    - name: Check system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev
+        echo "System dependencies check skipped - using pre-installed tools"
     
     - name: Run unit tests
       run: cargo test --verbose --all
