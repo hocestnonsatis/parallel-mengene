@@ -166,19 +166,34 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev
     
-    - name: Build release
-      run: cargo build --release
+    - name: Install cross-compilation targets
+      run: |
+        rustup target add x86_64-pc-windows-msvc
+        rustup target add x86_64-apple-darwin
+        rustup target add aarch64-apple-darwin
     
-    - name: Test binary
-      run: ./target/release/parallel-mengene --help
+    - name: Build release (Linux)
+      run: cargo build --release --target x86_64-unknown-linux-gnu
+    
+    - name: Build release (Windows)
+      run: cargo build --release --target x86_64-pc-windows-msvc
+    
+    - name: Build release (macOS Intel)
+      run: cargo build --release --target x86_64-apple-darwin
+    
+    - name: Build release (macOS ARM)
+      run: cargo build --release --target aarch64-apple-darwin
+    
+    - name: Test binary (Linux)
+      run: ./target/x86_64-unknown-linux-gnu/release/parallel-mengene --help
     
     - name: Test compression/decompression
       run: |
         echo "Testing compression and decompression..."
         echo "Test data" > test.txt
         
-        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
-        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        ./target/x86_64-unknown-linux-gnu/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/x86_64-unknown-linux-gnu/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
         
         # Verify data integrity
         if cmp -s test.txt test_decompressed.txt; then
@@ -191,9 +206,12 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: parallel-mengene-linux-x86_64
+        name: parallel-mengene-multi-platform
         path: |
-          target/release/parallel-mengene*
+          target/x86_64-unknown-linux-gnu/release/parallel-mengene*
+          target/x86_64-pc-windows-msvc/release/parallel-mengene*.exe
+          target/x86_64-apple-darwin/release/parallel-mengene*
+          target/aarch64-apple-darwin/release/parallel-mengene*
         retention-days: 7
 
   # ================================
