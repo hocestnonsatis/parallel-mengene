@@ -1,0 +1,865 @@
+name: Complete CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * 0'  # Run every Sunday at 2 AM
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ================================
+  # PHASE 1: CODE QUALITY & SECURITY
+  # ================================
+  
+  dependency-review:
+    name: 🔍 Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v5
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, "MIT OR Apache-2.0", "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", "BSD-2-Clause OR Apache-2.0 OR MIT", "MIT/Apache-2.0"
+        deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  security-audit:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Install security tools
+      run: |
+        cargo install cargo-audit cargo-deny cargo-outdated
+    
+    - name: Run security audit
+      run: cargo audit
+    
+    - name: Run license check
+      run: cargo deny check
+    
+    - name: Check for outdated dependencies
+      run: cargo outdated --exit-code 1
+
+  codeql-analysis:
+    name: 🔍 CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'rust' ]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Build
+      run: cargo build --release
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  # ================================
+  # PHASE 2: CODE QUALITY & TESTING
+  # ================================
+  
+  code-quality:
+    name: 🧹 Code Quality
+    runs-on: ubuntu-latest
+    needs: [security-audit]
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-quality-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+  test-suite:
+    name: 🧪 Test Suite
+    runs-on: ${{ matrix.os }}
+    needs: [code-quality]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            rust: beta
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            rust: nightly
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            rust: stable
+            target: x86_64-apple-darwin
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        targets: ${{ matrix.target }}
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.rust }}-
+    
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install pkg-config openssl
+    
+    - name: Run unit tests
+      run: cargo test --verbose --all
+    
+    - name: Run integration tests
+      run: cargo test --verbose --test integration_tests
+    
+    - name: Run benchmarks
+      run: cargo bench --verbose
+
+  # ================================
+  # PHASE 3: BUILD & CROSS-PLATFORM
+  # ================================
+  
+  build:
+    name: 🔨 Build
+    runs-on: ${{ matrix.os }}
+    needs: [test-suite]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: windows-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: macos-aarch64
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-22.04'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install pkg-config openssl
+    
+    - name: Build release
+      run: cargo build --release --target ${{ matrix.target }}
+    
+    - name: Test binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: ./target/${{ matrix.target }}/release/parallel-mengene --help
+    
+    - name: Test binary (Windows)
+      if: matrix.os == 'windows-latest'
+      run: .\target\${{ matrix.target }}\release\parallel-mengene.exe --help
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: parallel-mengene-${{ matrix.artifact_name }}
+        path: |
+          target/${{ matrix.target }}/release/parallel-mengene*
+        retention-days: 30
+
+  # ================================
+  # PHASE 4: FUNCTIONAL TESTING
+  # ================================
+  
+  functional-tests:
+    name: 🔧 Functional Tests
+    runs-on: ${{ matrix.os }}
+    needs: [build]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux
+          - os: windows-latest
+            name: Windows
+          - os: macos-latest
+            name: macOS
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-functional-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install pkg-config openssl
+    
+    - name: Build
+      run: cargo build --release
+    
+    - name: Test compression/decompression (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        echo "Testing compression and decompression on ${{ matrix.name }}..."
+        echo "Test data" > test.txt
+        
+        ./target/release/parallel-mengene compress test.txt test.pmz --algorithm zstd
+        ./target/release/parallel-mengene decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity on Unix-like systems
+        if cmp -s test.txt test_decompressed.txt; then
+          echo "✅ Data integrity verified on ${{ matrix.name }}"
+        else
+          echo "❌ Data integrity failed on ${{ matrix.name }}"
+          exit 1
+        fi
+
+    - name: Test compression/decompression (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "Testing compression and decompression on ${{ matrix.name }}..."
+        echo "Test data" > test.txt
+        
+        .\target\release\parallel-mengene.exe compress test.txt test.pmz --algorithm zstd
+        .\target\release\parallel-mengene.exe decompress test.pmz test_decompressed.txt --algorithm zstd
+        
+        # Verify data integrity on Windows
+        if ((Compare-Object (Get-Content test.txt) (Get-Content test_decompressed.txt)).Length -eq 0) {
+          echo "✅ Data integrity verified on Windows"
+        } else {
+          echo "❌ Data integrity failed on Windows"
+          exit 1
+        }
+
+  algorithm-tests:
+    name: 🔬 Algorithm Tests
+    runs-on: ubuntu-latest
+    needs: [functional-tests]
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-algorithms-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev
+    
+    - name: Build
+      run: cargo build --release
+    
+    - name: Test all algorithms
+      run: |
+        echo "Testing all compression algorithms..."
+        echo "Lorem ipsum dolor sit amet, consectetur adipiscing elit." > test.txt
+        
+        # Test ZSTD
+        echo "Testing ZSTD..."
+        ./target/release/parallel-mengene compress test.txt test_zstd.pmz --algorithm zstd --level 3
+        ./target/release/parallel-mengene decompress test_zstd.pmz test_zstd_decompressed.txt --algorithm zstd
+        if cmp -s test.txt test_zstd_decompressed.txt; then
+          echo "✅ ZSTD test passed"
+        else
+          echo "❌ ZSTD test failed"
+          exit 1
+        fi
+        
+        # Test LZ4
+        echo "Testing LZ4..."
+        ./target/release/parallel-mengene compress test.txt test_lz4.pmz --algorithm lz4 --level 9
+        ./target/release/parallel-mengene decompress test_lz4.pmz test_lz4_decompressed.txt --algorithm lz4
+        if cmp -s test.txt test_lz4_decompressed.txt; then
+          echo "✅ LZ4 test passed"
+        else
+          echo "❌ LZ4 test failed"
+          exit 1
+        fi
+        
+        # Test GZIP
+        echo "Testing GZIP..."
+        ./target/release/parallel-mengene compress test.txt test_gzip.pmz --algorithm gzip --level 6
+        ./target/release/parallel-mengene decompress test_gzip.pmz test_gzip_decompressed.txt --algorithm gzip
+        if cmp -s test.txt test_gzip_decompressed.txt; then
+          echo "✅ GZIP test passed"
+        else
+          echo "❌ GZIP test failed"
+          exit 1
+        fi
+        
+        echo "🎉 All algorithm tests passed!"
+
+  # ================================
+  # PHASE 5: PERFORMANCE & BENCHMARKS
+  # ================================
+  
+  performance-tests:
+    name: 🚀 Performance Tests
+    runs-on: ubuntu-latest
+    needs: [algorithm-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-performance-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev bc
+    
+    - name: Build release
+      run: cargo build --release
+    
+    - name: Create test data
+      run: |
+        echo "Creating test data for performance benchmarks..."
+        # Small files (1MB)
+        dd if=/dev/urandom of=test_1mb_random.bin bs=1M count=1
+        dd if=/dev/zero of=test_1mb_zero.bin bs=1M count=1
+        echo "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." > test_1mb_text.txt
+        # Repeat text to make it 1MB
+        for i in {1..1000}; do cat test_1mb_text.txt >> test_1mb_text_full.txt; done
+        mv test_1mb_text_full.txt test_1mb_text.bin
+        
+        # Medium files (100MB)
+        dd if=/dev/urandom of=test_100mb_random.bin bs=1M count=100
+        dd if=/dev/zero of=test_100mb_zero.bin bs=1M count=100
+        
+        # Large files (1GB)
+        dd if=/dev/urandom of=test_1gb_random.bin bs=1M count=1000
+        dd if=/dev/zero of=test_1gb_zero.bin bs=1M count=1000
+    
+    - name: Run compression benchmarks
+      run: |
+        echo "=== COMPRESSION BENCHMARKS ===" > benchmark_results.txt
+        echo "Date: $(date)" >> benchmark_results.txt
+        echo "System: $(uname -a)" >> benchmark_results.txt
+        echo "CPU: $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)" >> benchmark_results.txt
+        echo "Memory: $(free -h | grep 'Mem:' | awk '{print $2}')" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        # Test different algorithms and files
+        for file in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$file" ]; then
+            echo "Testing file: $file" >> benchmark_results.txt
+            echo "File size: $(du -h "$file" | cut -f1)" >> benchmark_results.txt
+            
+            # ZSTD compression
+            echo "ZSTD Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_zstd.pmz" --algorithm zstd --level 3 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            
+            # LZ4 compression
+            echo "LZ4 Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_lz4.pmz" --algorithm lz4 --level 9 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            
+            # GZIP compression
+            echo "GZIP Compression:" >> benchmark_results.txt
+            time ./target/release/parallel-mengene compress "$file" "${file%.*}_gzip.pmz" --algorithm gzip --level 6 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+            echo "---" >> benchmark_results.txt
+          fi
+        done
+    
+    - name: Run decompression benchmarks
+      run: |
+        echo "=== DECOMPRESSION BENCHMARKS ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        for file in test_*_zstd.pmz test_*_lz4.pmz test_*_gzip.pmz; do
+          if [ -f "$file" ]; then
+            echo "Testing decompression: $file" >> benchmark_results.txt
+            time ./target/release/parallel-mengene decompress "$file" "${file%.*}_decompressed.bin" --algorithm $(echo "$file" | sed 's/.*_\([^_]*\)\.pmz/\1/') 2>&1 | tee -a benchmark_results.txt
+            echo "" >> benchmark_results.txt
+          fi
+        done
+    
+    - name: Verify data integrity
+      run: |
+        echo "=== DATA INTEGRITY VERIFICATION ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        for original in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$original" ]; then
+            echo "Verifying: $original" >> benchmark_results.txt
+            original_md5=$(md5sum "$original" | cut -d' ' -f1)
+            
+            for decompressed in ${original%.*}_*_decompressed.bin; do
+              if [ -f "$decompressed" ]; then
+                decompressed_md5=$(md5sum "$decompressed" | cut -d' ' -f1)
+                if [ "$original_md5" = "$decompressed_md5" ]; then
+                  echo "✅ $decompressed: INTEGRITY VERIFIED" >> benchmark_results.txt
+                else
+                  echo "❌ $decompressed: INTEGRITY FAILED" >> benchmark_results.txt
+                fi
+              fi
+            done
+            echo "" >> benchmark_results.txt
+          fi
+        done
+    
+    - name: Generate performance summary
+      run: |
+        echo "=== PERFORMANCE SUMMARY ===" >> benchmark_results.txt
+        echo "" >> benchmark_results.txt
+        
+        # Calculate compression ratios
+        for file in test_1mb_random.bin test_1mb_zero.bin test_1mb_text.bin test_100mb_random.bin test_100mb_zero.bin; do
+          if [ -f "$file" ]; then
+            original_size=$(stat -c%s "$file")
+            echo "File: $file (Original: $original_size bytes)" >> benchmark_results.txt
+            
+            for compressed in ${file%.*}_*.pmz; do
+              if [ -f "$compressed" ]; then
+                compressed_size=$(stat -c%s "$compressed")
+                ratio=$(echo "scale=2; (1 - $compressed_size / $original_size) * 100" | bc -l)
+                echo "  $(basename $compressed): $compressed_size bytes (${ratio}% compression)" >> benchmark_results.txt
+              fi
+            done
+            echo "" >> benchmark_results.txt
+          fi
+        done
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{ github.run_number }}
+        path: benchmark_results.txt
+        retention-days: 30
+    
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require('fs');
+          const results = fs.readFileSync('benchmark_results.txt', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 🚀 Performance Benchmark Results\n\n\`\`\`\n${results}\n\`\`\``
+          });
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f test_*.bin test_*.pmz benchmark_results.txt
+
+  # ================================
+  # PHASE 6: DOCUMENTATION
+  # ================================
+  
+  documentation:
+    name: 📚 Documentation
+    runs-on: ubuntu-latest
+    needs: [performance-tests]
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rust-docs
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libssl-dev aspell aspell-en linkchecker
+    
+    - name: Build documentation
+      run: |
+        cargo doc --all --no-deps --document-private-items
+    
+    - name: Check documentation links
+      run: |
+        linkchecker target/doc/index.html --check-extern --ignore-url="^https?://localhost"
+    
+    - name: Check spelling in README
+      run: |
+        aspell check README.md --mode=markdown
+    
+    - name: Check spelling in documentation
+      run: |
+        find docs/ -name "*.md" -exec aspell check {} --mode=markdown \;
+    
+    - name: Generate changelog
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        echo "# Changelog" > CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "All notable changes to this project will be documented in this file." >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "## [Unreleased]" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Added" >> CHANGELOG.md
+        echo "- New features and improvements" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Changed" >> CHANGELOG.md
+        echo "- Changes to existing functionality" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Fixed" >> CHANGELOG.md
+        echo "- Bug fixes" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Removed" >> CHANGELOG.md
+        echo "- Removed features" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        
+        # Get recent commits
+        git log --oneline --since="1 month ago" >> recent_commits.txt
+        echo "" >> CHANGELOG.md
+        echo "### Recent Commits" >> CHANGELOG.md
+        echo "\`\`\`" >> CHANGELOG.md
+        cat recent_commits.txt >> CHANGELOG.md
+        echo "\`\`\`" >> CHANGELOG.md
+    
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-${{ github.run_number }}
+        path: |
+          target/doc
+          CHANGELOG.md
+        retention-days: 30
+
+  # ================================
+  # PHASE 7: RELEASE & PACKAGING
+  # ================================
+  
+  package:
+    name: 📦 Package
+    runs-on: ${{ matrix.os }}
+    needs: [documentation]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x86_64
+            package_type: deb
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            artifact_name: windows-x86_64
+            package_type: installer
+          - os: macos-12
+            target: x86_64-apple-darwin
+            artifact_name: macos-x86_64
+            package_type: app
+          - os: macos-12
+            target: aarch64-apple-darwin
+            artifact_name: macos-aarch64
+            package_type: app
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.target }}-
+    
+    - name: Build
+      run: |
+        cargo build --release --target ${{ matrix.target }} --bin parallel-mengene
+    
+    # Linux .deb package
+    - name: Create .deb package (Ubuntu)
+      if: matrix.os == 'ubuntu-22.04' && matrix.package_type == 'deb'
+      run: |
+        # Install cargo-deb
+        cargo install cargo-deb --version 2.0.0
+        
+        # Create .deb package
+        cargo deb --target ${{ matrix.target }} --bin parallel-mengene
+        
+        # Move the .deb file to a known location
+        mkdir -p dist
+        cp target/${{ matrix.target }}/debian/*.deb dist/parallel-mengene-${{ matrix.artifact_name }}.deb
+    
+    # Windows NSIS Installer
+    - name: Create Windows Installer
+      if: matrix.os == 'windows-2022' && matrix.package_type == 'installer'
+      run: |
+        # Install NSIS
+        choco install nsis -y
+        
+        # Copy installer script
+        copy scripts\installer.nsi .
+        
+        # Copy documentation files
+        copy README.md .
+        copy docs\USER_GUIDE.md .
+        copy docs\API_REFERENCE.md .
+        
+        # Compile installer
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+        
+        # Create dist directory and move installer
+        mkdir dist
+        move parallel-mengene-installer.exe "dist\parallel-mengene-${{ matrix.artifact_name }}-installer.exe"
+    
+    # macOS .app bundle
+    - name: Create macOS App Bundle
+      if: matrix.os == 'macos-12' && matrix.package_type == 'app'
+      run: |
+        # Use the script to create app bundle
+        chmod +x scripts/create-macos-app.sh
+        ./scripts/create-macos-app.sh ${{ matrix.target }} ${{ matrix.artifact_name }}
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: parallel-mengene-${{ matrix.artifact_name }}
+        path: |
+          dist/
+          target/${{ matrix.target }}/release/parallel-mengene*
+        retention-days: 30
+
+  create-release:
+    name: 🚀 Create Release
+    needs: [package]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          artifacts/*/dist/*.deb
+          artifacts/*/dist/*.exe
+          artifacts/*/dist/*.tar.gz
+          artifacts/*/target/*/release/parallel-mengene*
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ================================
+  # PHASE 8: NOTIFICATION & SUMMARY
+  # ================================
+  
+  workflow-summary:
+    name: 📊 Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-review, security-audit, codeql-analysis, code-quality, test-suite, build, functional-tests, algorithm-tests, performance-tests, documentation, package]
+    if: always()
+    
+    steps:
+    - name: Generate workflow summary
+      run: |
+        echo "## 🎉 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Phase | Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔍 **Security** | Dependency Review | ${{ needs.dependency-review.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔒 **Security** | Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔍 **Security** | CodeQL Analysis | ${{ needs.codeql-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧹 **Quality** | Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧪 **Testing** | Test Suite | ${{ needs.test-suite.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔨 **Build** | Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔧 **Testing** | Functional Tests | ${{ needs.functional-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔬 **Testing** | Algorithm Tests | ${{ needs.algorithm-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🚀 **Performance** | Performance Tests | ${{ needs.performance-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📚 **Documentation** | Documentation | ${{ needs.documentation.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📦 **Release** | Package | ${{ needs.package.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.package.result }}" = "success" ]; then
+          echo "✅ **All phases completed successfully!**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Some phases failed. Please check the logs.**" >> $GITHUB_STEP_SUMMARY
+        fi
