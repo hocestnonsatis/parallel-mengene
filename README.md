@@ -2,17 +2,17 @@
 
 <div align="center">
 
-![Parallel-Mengene Logo](https://img.shields.io/badge/Parallel-Mengene-blue?style=for-the-badge&logo=rust)
+![Parallel-Mengene](https://img.shields.io/badge/Parallel--Mengene-blue?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-1.0.0-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache%202.0-blue?style=for-the-badge)
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange?style=for-the-badge&logo=rust)
 
 **High-performance parallel file compression tool** - Squeeze it parallel! 🚀
 
-[![Fast CI/CD Pipeline](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml)
-[![Security Audit](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml)
-[![Self-Hosted Runner](https://img.shields.io/badge/runner-self--hosted-green?style=flat-square)](https://github.com/hocestnonsatis/parallel-mengene/actions)
+[![CI/CD Pipeline](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml)
+[![Security Audit](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/security.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/security.yml)
+[![Code Quality](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/quality.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/quality.yml)
+[![Self-Hosted Runner](https://img.shields.io/badge/runner-self--hosted-brightgreen?style=flat-square&logo=github)](https://github.com/hocestnonsatis/parallel-mengene/actions)
 
 </div>
 
