@@ -192,13 +192,13 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download Linux artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: parallel-mengene-linux
         path: ./artifacts/linux/
     
     - name: Download Windows artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: parallel-mengene-windows
         path: ./artifacts/windows/
