@@ -10,9 +10,7 @@
 **High-performance parallel file compression tool** - Squeeze it parallel! 🚀
 
 [![CI/CD Pipeline](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/ci.yml)
-[![Security Audit](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/security.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/security.yml)
-[![Code Quality](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/quality.yml/badge.svg)](https://github.com/hocestnonsatis/parallel-mengene/actions/workflows/quality.yml)
-[![Self-Hosted Runner](https://img.shields.io/badge/runner-self--hosted-brightgreen?style=flat-square&logo=github)](https://github.com/hocestnonsatis/parallel-mengene/actions)
+
 
 </div>
 
@@ -112,18 +110,6 @@ parallel-mengene benchmark input.txt --algorithms lz4 gzip zstd
 parallel-mengene --help
 ```
 
-## 🚀 CI/CD Pipeline
-
-### ⚡ Self-Hosted Runner Performance
-
-Our optimized CI/CD pipeline runs on a self-hosted runner for maximum speed and efficiency:
-
-| Metric | Value | Description |
-|--------|-------|-------------|
-| **Execution Time** | ~2-5 minutes | 60-70% faster than GitHub hosted |
-| **Cache Hit Rate** | 95%+ | Unified cache strategy |
-| **Parallel Jobs** | 5 jobs | Quality checks + Docker builds |
-| **Success Rate** | 100% | All tests passing consistently |
 
 ### 🔧 Workflow Features
 
