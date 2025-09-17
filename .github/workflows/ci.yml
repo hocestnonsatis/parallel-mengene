@@ -39,6 +39,7 @@ jobs:
       run: |
         cargo install cargo-audit
         cargo install cargo-outdated
+        cargo install cargo-deny
     
     - name: Run security audit
       run: cargo audit
