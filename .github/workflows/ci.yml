@@ -39,6 +39,7 @@ jobs:
       run: |
         cargo install cargo-audit
         cargo install cargo-outdated
+        cargo install cargo-deny
     
     - name: Run security audit
       run: cargo audit
@@ -102,11 +103,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
-    - name: Run unit tests
-      run: cargo test --verbose
-    
-    - name: Run integration tests
-      run: cargo test --test integration_tests --verbose
+    - name: Run all workspace tests
+      run: cargo test --workspace --all-features --all-targets --verbose
 
   # ================================
   # PHASE 2: BUILD & RELEASE
@@ -136,7 +134,7 @@ jobs:
           ${{ runner.os }}-cargo-
     
     - name: Build Linux binary
-      run: cargo build --release
+      run: cargo build -p parallel-mengene-cli --release
     
     - name: Test Linux binary
       run: ./target/release/parallel-mengene --help
@@ -172,7 +170,7 @@ jobs:
           ${{ runner.os }}-cargo-
     
     - name: Build Windows binary
-      run: cargo build --release
+      run: cargo build -p parallel-mengene-cli --release
     
     - name: Test Windows binary
       run: .\target\release\parallel-mengene.exe --help
