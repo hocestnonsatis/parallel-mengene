@@ -189,11 +189,13 @@ impl BenchmarkRunner {
             // Actually compress the data using the core compression library
             let input_data = std::fs::read(test_file)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
-            
-            let compression_context = parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
-            let compressed_data = compression_context.compress(&input_data)
+
+            let compression_context =
+                parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
+            let compressed_data = compression_context
+                .compress(&input_data)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
-            
+
             std::fs::write(&compressed_file, compressed_data)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
             Ok(())
@@ -216,11 +218,13 @@ impl BenchmarkRunner {
             // Actually decompress the data using the core compression library
             let compressed_data = std::fs::read(&compressed_file)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
-            
-            let compression_context = parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
-            let decompressed_data = compression_context.decompress(&compressed_data)
+
+            let compression_context =
+                parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
+            let decompressed_data = compression_context
+                .decompress(&compressed_data)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
-            
+
             std::fs::write(&decompressed_file, decompressed_data)
                 .map_err(|e| parallel_mengene_core::error::Error::InvalidInput(e.to_string()))?;
             Ok(())

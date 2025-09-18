@@ -126,14 +126,14 @@ fn file_seems_tar(path: &Path) -> bool {
             return false;
         }
     }
-    
+
     // For LZ4 files, we should not treat them as tar archives
     if let Some(extension) = path.extension() {
         if extension == "lz4" {
             return false;
         }
     }
-    
+
     // More robust tar detection: check for tar magic bytes and try to read entries
     std::fs::File::open(path)
         .ok()
@@ -143,20 +143,22 @@ fn file_seems_tar(path: &Path) -> bool {
             if f.read_exact(&mut buffer).is_err() {
                 return Some(false);
             }
-            
+
             // Tar files start with a 512-byte header, check if it looks like a tar header
             // Tar headers have specific structure: filename (100 bytes), mode (8 bytes), etc.
             let filename_start = 0;
             let filename_end = 100;
             let filename_bytes = &buffer[filename_start..filename_end];
-            
+
             // Check if the filename area contains printable characters or nulls (typical for tar)
-            let has_valid_filename = filename_bytes.iter().all(|&b| b == 0 || (b >= 32 && b <= 126));
-            
+            let has_valid_filename = filename_bytes
+                .iter()
+                .all(|&b| b == 0 || (b >= 32 && b <= 126));
+
             if !has_valid_filename {
                 return Some(false);
             }
-            
+
             // Now try to read the tar archive
             let mut ar = tar::Archive::new(f);
             if let Ok(entries) = ar.entries() {
@@ -167,7 +169,8 @@ fn file_seems_tar(path: &Path) -> bool {
                         return Some(false);
                     }
                     count += 1;
-                    if count >= 3 { // Check first 3 entries
+                    if count >= 3 {
+                        // Check first 3 entries
                         break;
                     }
                 }
@@ -320,33 +323,43 @@ pub async fn benchmark(
 
     for algorithm in &algorithms {
         println!("Testing algorithm: {:?}", algorithm);
-        
-        let compression_context = parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
-        
+
+        let compression_context =
+            parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
+
         // Measure compression
         let start = std::time::Instant::now();
         let compressed_data = compression_context.compress(&input_data)?;
         let compression_time = start.elapsed();
-        
+
         // Measure decompression
         let start = std::time::Instant::now();
         let decompressed_data = compression_context.decompress(&compressed_data)?;
         let decompression_time = start.elapsed();
-        
+
         // Verify integrity
         let integrity_ok = input_data == decompressed_data;
-        
+
         // Calculate metrics
-        let compression_ratio = (1.0 - compressed_data.len() as f64 / input_data.len() as f64) * 100.0;
-        let compression_speed = (input_data.len() as f64 / 1_048_576.0) / compression_time.as_secs_f64().max(1e-9);
-        let decompression_speed = (compressed_data.len() as f64 / 1_048_576.0) / decompression_time.as_secs_f64().max(1e-9);
-        
+        let compression_ratio =
+            (1.0 - compressed_data.len() as f64 / input_data.len() as f64) * 100.0;
+        let compression_speed =
+            (input_data.len() as f64 / 1_048_576.0) / compression_time.as_secs_f64().max(1e-9);
+        let decompression_speed = (compressed_data.len() as f64 / 1_048_576.0)
+            / decompression_time.as_secs_f64().max(1e-9);
+
         println!("  Compression time: {:.2}ms", compression_time.as_millis());
-        println!("  Decompression time: {:.2}ms", decompression_time.as_millis());
+        println!(
+            "  Decompression time: {:.2}ms",
+            decompression_time.as_millis()
+        );
         println!("  Compression ratio: {:.2}%", compression_ratio);
         println!("  Compression speed: {:.2} MB/s", compression_speed);
         println!("  Decompression speed: {:.2} MB/s", decompression_speed);
-        println!("  Integrity check: {}", if integrity_ok { "PASS" } else { "FAIL" });
+        println!(
+            "  Integrity check: {}",
+            if integrity_ok { "PASS" } else { "FAIL" }
+        );
         println!();
     }
 

@@ -43,18 +43,18 @@ impl CompressionContext {
     /// LZ4 compression with configurable level
     fn compress_lz4(&self, data: &[u8]) -> Result<Vec<u8>> {
         use lz4_flex::compress_prepend_size;
-        
+
         // LZ4 levels 1-9 correspond to different compression strategies
         // For simplicity, we'll use the same compression for all levels
         // In a real implementation, you'd use different strategies per level
         let compressed = compress_prepend_size(data);
-        
+
         Ok(compressed)
     }
 
     fn decompress_lz4(&self, data: &[u8]) -> Result<Vec<u8>> {
         use lz4_flex::decompress_size_prepended;
-        
+
         // LZ4 with size prepended is the standard format
         decompress_size_prepended(data)
             .map_err(|e| Error::Compression(format!("LZ4 decompression failed: {}", e)))
