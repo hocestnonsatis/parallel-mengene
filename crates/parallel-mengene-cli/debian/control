@@ -11,14 +11,14 @@ Vcs-Browser: https://github.com/hocestnonsatis/parallel-mengene
 Package: parallel-mengene
 Architecture: any
 Depends: ${misc:Depends}
-Description: High-performance parallel file compression tool
+Description: High-performance parallel file compression tool (pm algorithm)
  Parallel Mengene is a high-performance parallel file compression tool
- that leverages multi-threading and advanced algorithms to provide
+ that leverages multi-threading and a reference pm algorithm to provide
  fast compression and decompression of files.
  .
  Features:
   - Multi-threaded compression and decompression
-  - Support for multiple compression algorithms (LZ4, GZIP, ZSTD)
+  - Reference pm algorithm
   - Memory-mapped file I/O for large files
   - Progress indicators and detailed statistics
-  - Cross-platform support (Linux, Windows, macOS)
+  - Cross-platform support (Linux, Windows)

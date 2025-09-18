@@ -28,11 +28,7 @@ pub struct BenchmarkConfig {
 impl Default for BenchmarkConfig {
     fn default() -> Self {
         Self {
-            algorithms: vec![
-                CompressionAlgorithm::Lz4,
-                CompressionAlgorithm::Gzip,
-                CompressionAlgorithm::Zstd,
-            ],
+            algorithms: vec![CompressionAlgorithm::Pm],
             test_files: Vec::new(),
             iterations: 3,
             warmup_iterations: 1,

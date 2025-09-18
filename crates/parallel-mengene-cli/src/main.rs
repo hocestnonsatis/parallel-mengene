@@ -24,23 +24,26 @@ async fn main() -> anyhow::Result<()> {
             algorithm,
             level,
             threads,
+            verbose,
         } => {
-            compress(input, output, algorithm, level, threads).await?;
+            compress(input, output, algorithm, level, threads, verbose).await?;
         }
         cli::Command::Decompress {
             input,
             output,
             algorithm,
             threads,
+            verbose,
         } => {
-            decompress(input, output, algorithm, threads).await?;
+            decompress(input, output, algorithm, threads, verbose).await?;
         }
         cli::Command::Benchmark {
             input,
             algorithms,
             threads,
+            verbose,
         } => {
-            benchmark(input, algorithms, threads).await?;
+            benchmark(input, algorithms, threads, verbose).await?;
         }
     }
 

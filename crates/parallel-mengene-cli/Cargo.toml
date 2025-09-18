@@ -43,3 +43,5 @@ parallel-mengene-core = { path = "../parallel-mengene-core" }
 
 # Pipeline crate
 parallel-mengene-pipeline = { path = "../parallel-mengene-pipeline" }
+tar = "0.4"
+tempfile = "3"

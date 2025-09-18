@@ -3,8 +3,8 @@
 <div align="center">
 
 ![Parallel-Mengene](https://img.shields.io/badge/Parallel--Mengene-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.0.0-green?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache%202.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.0.1-green?style=for-the-badge)
+![License](https://img.shields.io/badge/license-Unlicense-blue?style=for-the-badge)
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange?style=for-the-badge&logo=rust)
 
 **High-performance parallel file compression tool** - Squeeze it parallel! 🚀
@@ -16,12 +16,12 @@
 
 ## 🎯 Overview
 
-Parallel-Mengene is a cutting-edge file compression tool that leverages advanced CPU parallelism and memory optimization techniques to achieve exceptional compression speeds. Built with Rust for maximum performance and reliability, it supports multiple industry-standard compression algorithms with intelligent workload distribution.
+Parallel-Mengene is a cutting-edge file compression tool that leverages advanced CPU parallelism and memory optimization techniques to achieve exceptional compression speeds. Built with Rust for maximum performance and reliability, it provides an efficient parallel pipeline around a simple reference compression format.
 
 ## ✨ Key Features
 
 - 🚀 **Blazing Fast Performance**: Up to 1399 MB/s compression speed
-- 🔧 **Multiple Algorithms**: LZ4, Gzip, and Zstd support
+- 🔧 **Algorithm**: Single `pm` algorithm (simple RLE-based reference)
 - ⚡ **Parallel Processing**: Multi-threaded compression using Rayon
 - 🧠 **Intelligent Pipeline**: Automatic workload distribution and optimization
 - 📊 **Memory Efficient**: Memory-mapped files and streaming compression
@@ -41,8 +41,6 @@ parallel-mengene/
 │   ├── parallel-mengene-cli/      # Command-line interface
 │   ├── parallel-mengene-pipeline/ # Parallel processing pipeline
 │   └── parallel-mengene-benchmarks/ # Performance testing suite
-├── docs/                          # Documentation
-├── examples/                      # Usage examples
 └── tests/                         # Test suites
 ```
 
@@ -97,18 +95,37 @@ cargo install --path crates/parallel-mengene-cli
 ### Basic Usage
 
 ```bash
-# Compress a file
-parallel-mengene compress input.txt output.pmz --algorithm zstd --level 3
+# Compress a file (output auto-generated as .pm if not provided)
+parallel-mengene compress input.txt
+# -> creates: input.pm
 
-# Decompress a file
-parallel-mengene decompress output.pmz input.txt --algorithm zstd
+# Compress a directory (creates tar archive first, then compresses)
+parallel-mengene compress my_folder
+# -> creates: my_folder.pm
 
-# Benchmark different algorithms
-parallel-mengene benchmark input.txt --algorithms lz4 gzip zstd
+# Compress with explicit output (optional)
+parallel-mengene compress input.txt custom_output.pm
+
+# Decompress a file (output auto-detected)
+parallel-mengene decompress input.pm
+# -> creates: input
+
+# Decompress a directory archive
+parallel-mengene decompress my_folder.pm restored_folder
+# -> creates: restored_folder (contains the original directory structure)
+
+# Benchmark (pm algorithm)
+parallel-mengene benchmark input.txt
 
 # Get help
 parallel-mengene --help
 ```
+
+#### Automatic Output Rules
+
+- **File Compression**: if no output is provided, the tool produces a file with the same name and adds `.pm` suffix (e.g., `document.pdf` → `document.pdf.pm`, `data` → `data.pm`).
+- **Directory Compression**: directories are first archived into a temporary tar file, then compressed with `.pm` extension (e.g., `my_folder` → `my_folder.pm`).
+- **Decompression**: if the input ends with `.pm`, the extension is removed (e.g., `archive.pm` → `archive`). Otherwise, `_decompressed` is appended.
 
 
 ### 🔧 Workflow Features
@@ -119,13 +136,10 @@ parallel-mengene --help
 - ✅ **Release Automation**: Automatic GitHub releases with artifacts
 - ✅ **Performance Monitoring**: Built-in benchmarking and profiling
 
-### 📊 Performance Benchmarks
+### 📊 Performance Notes
 
-| Algorithm | Compression Speed | Decompression Speed | Compression Ratio |
-|-----------|------------------|-------------------|------------------|
-| **Zstd**  | 1399 MB/s        | 3197 MB/s        | 99.9969%         |
-| **LZ4**   | 0.46-2.45 MB/s   | 111-337 MB/s     | 98.4%            |
-| **Gzip**  | 200-500 MB/s     | 400-800 MB/s     | 60-80%           |
+- Parallel chunking, memory mapping and streaming paths are implemented.
+- The reference `pm` algorithm is simple and prioritizes structure over compression ratio.
 
 ### Memory Usage
 - **Peak Memory**: ~2x input file size
@@ -174,34 +188,40 @@ cargo build --release --target x86_64-pc-windows-gnu
 
 ## 📚 Documentation
 
-- **[User Guide](docs/USER_GUIDE.md)**: Complete usage instructions
-- **[API Reference](docs/API_REFERENCE.md)**: Detailed API documentation
-- **[Testing Summary](TESTING_SUMMARY.md)**: Comprehensive test coverage
-- **[Roadmap](roadmap.md)**: Development roadmap and features
+- See this README and the tests in `crates/parallel-mengene-pipeline/tests` and `tests/` for examples.
 
 ## 🔧 Advanced Usage
 
 ### Compression Options
 
 ```bash
-# High compression ratio
-parallel-mengene compress input.txt output.pmz --algorithm zstd --level 22
-
-# Fast compression
-parallel-mengene compress input.txt output.pmz --algorithm lz4 --level 1
+# Basic compression (pm algorithm)
+parallel-mengene compress input.txt result.pm
 
 # Custom thread count
-parallel-mengene compress input.txt output.pmz --threads 8
+parallel-mengene compress input.txt threaded.pm --threads 8
+
+# Compress entire directory
+parallel-mengene compress my_project
+
+# Compress directory with custom output
+parallel-mengene compress my_project backup.pm
 ```
 
 ### Large File Processing
 
 ```bash
 # Process large files with memory mapping
-parallel-mengene compress large_file.bin compressed.pmz --algorithm zstd
+parallel-mengene compress large_file.bin compressed.pm
 
 # Stream processing for very large files
-parallel-mengene compress huge_file.bin compressed.pmz --algorithm zstd --stream
+parallel-mengene compress huge_file.bin compressed.pm
+
+# Compress large directory structures
+parallel-mengene compress large_dataset
+
+# Compress with custom thread count for better performance
+parallel-mengene compress big_folder --threads 16
 ```
 
 ## 🧪 Testing & Quality Assurance
@@ -273,7 +293,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## 📈 Roadmap
 
 ### ✅ Completed (v1.0.0)
-- Core compression algorithms (LZ4, Gzip, Zstd)
+- Reference `pm` algorithm and format
 - Parallel processing pipeline
 - Memory optimization and mapping
 - Comprehensive testing suite
@@ -294,17 +314,12 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 📄 License
 
-This project is licensed under either of:
-
-
-- **MIT License** ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+This project is released into the public domain under **The Unlicense**. See `LICENSE` or https://unlicense.org/ for details.
 
 
 ## 🙏 Acknowledgments
 
 - **[Rayon](https://github.com/rayon-rs/rayon)** - Data parallelism
-- **[Zstd](https://github.com/facebook/zstd)** - Fast compression algorithm
-- **[LZ4](https://github.com/lz4/lz4)** - Extremely fast compression
 - **[Clap](https://github.com/clap-rs/clap)** - Command-line parsing
 - **[Criterion](https://github.com/bheisler/criterion.rs)** - Benchmarking
 
@@ -328,7 +343,7 @@ This project is licensed under either of:
 - **Latest Release**: [v1.0.0](https://github.com/hocestnonsatis/parallel-mengene/releases/tag/v1.0.0)
 - **Release Date**: September 2024
 - **Binary Downloads**: Available for Linux x86_64
-- **Source Code**: MIT + Apache 2.0 licensed
+- **Source Code**: Unlicense
 
 ---
 
