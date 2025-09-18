@@ -4,6 +4,7 @@ use anyhow::Result;
 use parallel_mengene_core::algorithms::CompressionAlgorithm;
 use parallel_mengene_core::utils::{format_file_size, get_cpu_count};
 use parallel_mengene_pipeline::parallel_pipeline::ParallelPipeline;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 use tracing::info;
@@ -28,12 +29,12 @@ fn archive_directory_to_temp(input_dir: &Path) -> Result<NamedTempFile> {
     Ok(temp_tar)
 }
 
-/// Generate output path with .pm extension for compression
+/// Generate output path with .lz4 extension for compression
 fn generate_compress_output_path(input: &Path) -> PathBuf {
-    // Place alongside input, with full name (including original extension) plus .pm suffix
+    // Place alongside input, with full name (including original extension) plus .lz4 suffix
     let parent = input.parent().unwrap_or_else(|| Path::new("."));
     let name = input.file_name().unwrap_or_default().to_string_lossy();
-    parent.join(format!("{}.pm", name))
+    parent.join(format!("{}.lz4", name))
 }
 
 /// Resolve compression output path when user provided `output` may be a directory
@@ -42,9 +43,9 @@ fn resolve_compress_output_path(input: &Path, output: Option<PathBuf>) -> PathBu
         None => generate_compress_output_path(input),
         Some(out) => {
             if out.exists() && out.is_dir() {
-                // Put file inside directory, preserving input file/dir name and adding .pm
+                // Put file inside directory, preserving input file/dir name and adding .lz4
                 let name = input.file_name().unwrap_or_default().to_string_lossy();
-                return out.join(format!("{}.pm", name));
+                return out.join(format!("{}.lz4", name));
             }
             out
         }
@@ -119,22 +120,71 @@ pub async fn compress(
 /// Decompress a file or directory
 /// Determine if a file appears to be a tar archive by probing with `tar`
 fn file_seems_tar(path: &Path) -> bool {
+    // Only check for tar if the file is reasonably large (tar files are usually > 512 bytes)
+    if let Ok(metadata) = std::fs::metadata(path) {
+        if metadata.len() < 512 {
+            return false;
+        }
+    }
+    
+    // For LZ4 files, we should not treat them as tar archives
+    if let Some(extension) = path.extension() {
+        if extension == "lz4" {
+            return false;
+        }
+    }
+    
+    // More robust tar detection: check for tar magic bytes and try to read entries
     std::fs::File::open(path)
         .ok()
-        .and_then(|f| {
+        .and_then(|mut f| {
+            // Check for tar magic bytes at the beginning
+            let mut buffer = [0; 512];
+            if f.read_exact(&mut buffer).is_err() {
+                return Some(false);
+            }
+            
+            // Tar files start with a 512-byte header, check if it looks like a tar header
+            // Tar headers have specific structure: filename (100 bytes), mode (8 bytes), etc.
+            let filename_start = 0;
+            let filename_end = 100;
+            let filename_bytes = &buffer[filename_start..filename_end];
+            
+            // Check if the filename area contains printable characters or nulls (typical for tar)
+            let has_valid_filename = filename_bytes.iter().all(|&b| b == 0 || (b >= 32 && b <= 126));
+            
+            if !has_valid_filename {
+                return Some(false);
+            }
+            
+            // Now try to read the tar archive
             let mut ar = tar::Archive::new(f);
-            ar.entries().ok()?; // If we can read entries, it looks like tar
-            Some(())
+            if let Ok(entries) = ar.entries() {
+                // Try to read the first few entries to confirm it's a valid tar
+                let mut count = 0;
+                for entry in entries {
+                    if entry.is_err() {
+                        return Some(false);
+                    }
+                    count += 1;
+                    if count >= 3 { // Check first 3 entries
+                        break;
+                    }
+                }
+                Some(count > 0)
+            } else {
+                Some(false)
+            }
         })
-        .is_some()
+        .unwrap_or(false)
 }
 
 /// Build default decompressed base path (without considering output-as-directory)
 fn generate_decompress_output_base(input: &Path) -> PathBuf {
     let mut output = input.to_path_buf();
     if let Some(extension) = output.extension() {
-        if extension == "pm" {
-            // Remove .pm extension
+        if extension == "lz4" {
+            // Remove .lz4 extension
             output.set_extension("");
         } else {
             let stem = output.file_stem().unwrap_or_default();
@@ -157,7 +207,7 @@ fn resolve_decompress_targets(
         None => (base, false),
         Some(out) => {
             if out.exists() && out.is_dir() {
-                // Place result inside this directory with original name (input stem without .pm)
+                // Place result inside this directory with original name (input stem without .lz4)
                 let stem = input
                     .file_stem()
                     .map(|s| s.to_string_lossy().to_string())
@@ -256,12 +306,49 @@ pub async fn benchmark(
     info!("Benchmarking algorithms on {:?}", input);
     info!("Algorithms: {:?}, Threads: {}", algorithms, threads);
 
-    // TODO: Implement actual benchmarking logic
-    // This would involve:
-    // 1. Reading the input file
-    // 2. Testing each algorithm with different compression levels
-    // 3. Measuring compression time, decompression time, and ratio
-    // 4. Displaying results in a nice table format
+    if !input.exists() {
+        return Err(anyhow::anyhow!("Input file does not exist: {:?}", input));
+    }
+
+    let file_size = std::fs::metadata(&input)?.len();
+    let input_data = std::fs::read(&input)?;
+
+    println!("Benchmarking on file: {:?} ({} bytes)", input, file_size);
+    println!("Algorithms: {:?}", algorithms);
+    println!("Threads: {}", threads);
+    println!();
+
+    for algorithm in &algorithms {
+        println!("Testing algorithm: {:?}", algorithm);
+        
+        let compression_context = parallel_mengene_core::compression::CompressionContext::new(*algorithm, None);
+        
+        // Measure compression
+        let start = std::time::Instant::now();
+        let compressed_data = compression_context.compress(&input_data)?;
+        let compression_time = start.elapsed();
+        
+        // Measure decompression
+        let start = std::time::Instant::now();
+        let decompressed_data = compression_context.decompress(&compressed_data)?;
+        let decompression_time = start.elapsed();
+        
+        // Verify integrity
+        let integrity_ok = input_data == decompressed_data;
+        
+        // Calculate metrics
+        let compression_ratio = (1.0 - compressed_data.len() as f64 / input_data.len() as f64) * 100.0;
+        let compression_speed = (input_data.len() as f64 / 1_048_576.0) / compression_time.as_secs_f64().max(1e-9);
+        let decompression_speed = (compressed_data.len() as f64 / 1_048_576.0) / decompression_time.as_secs_f64().max(1e-9);
+        
+        println!("  Compression time: {:.2}ms", compression_time.as_millis());
+        println!("  Decompression time: {:.2}ms", decompression_time.as_millis());
+        println!("  Compression ratio: {:.2}%", compression_ratio);
+        println!("  Compression speed: {:.2} MB/s", compression_speed);
+        println!("  Decompression speed: {:.2} MB/s", decompression_speed);
+        println!("  Integrity check: {}", if integrity_ok { "PASS" } else { "FAIL" });
+        println!();
+    }
 
     println!("Benchmark completed successfully!");
 

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "parallel-mengene")]
-#[command(about = "GPU-accelerated file compression tool - Squeeze it parallel!")]
+#[command(about = "Fast LZ4-based file compression tool - High-speed parallel processing!")]
 #[command(version)]
 pub struct Cli {
     #[command(subcommand)]
@@ -23,8 +23,8 @@ pub enum Command {
         /// Output file or directory (optional - will auto-generate with .pm extension if not provided)
         output: Option<PathBuf>,
 
-        /// Compression algorithm to use (only 'pm' is supported)
-        #[arg(short, long, default_value = "pm")]
+        /// Compression algorithm to use (only 'lz4' is supported)
+        #[arg(short, long, default_value = "lz4")]
         algorithm: CompressionAlgorithm,
 
         /// Compression level (fixed for pm)
@@ -48,8 +48,8 @@ pub enum Command {
         /// Output file or directory (optional - will auto-generate based on input if not provided)
         output: Option<PathBuf>,
 
-        /// Compression algorithm to use (only 'pm' is supported)
-        #[arg(short, long, default_value = "pm")]
+        /// Compression algorithm to use (only 'lz4' is supported)
+        #[arg(short, long, default_value = "lz4")]
         algorithm: CompressionAlgorithm,
 
         /// Number of threads to use
@@ -66,8 +66,8 @@ pub enum Command {
         /// Input file or directory to benchmark
         input: PathBuf,
 
-        /// Algorithms to benchmark (only 'pm' is supported)
-        #[arg(short, long, default_values = ["pm"])]
+        /// Algorithms to benchmark (only 'lz4' is supported)
+        #[arg(short, long, default_values = ["lz4"])]
         algorithms: Vec<CompressionAlgorithm>,
 
         /// Number of threads to use

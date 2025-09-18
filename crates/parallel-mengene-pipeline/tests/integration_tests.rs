@@ -49,7 +49,7 @@ async fn test_small_file_compression() {
     fs::write(&input_path, &test_data).unwrap();
 
     // Single algorithm
-    for algorithm in [CompressionAlgorithm::Pm] {
+    for algorithm in [CompressionAlgorithm::Lz4] {
         let pipeline = ParallelPipeline::new(algorithm).unwrap();
 
         // Compress
@@ -91,7 +91,7 @@ async fn test_medium_file_compression() {
     let test_data = create_test_data(10);
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
 
     // Compress
     pipeline
@@ -127,7 +127,7 @@ async fn test_repetitive_data_compression() {
     let test_data = create_repetitive_data(50);
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
 
     // Compress
     pipeline
@@ -163,7 +163,7 @@ async fn test_empty_file_compression() {
     // Create empty file
     fs::write(&input_path, b"").unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
 
     // Compress
     pipeline
@@ -194,7 +194,7 @@ async fn test_compression_roundtrip_multiple_times() {
     let test_data = create_test_data(5); // 5MB
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
 
     // Perform multiple compression/decompression cycles
     for i in 0..3 {
@@ -236,7 +236,7 @@ async fn test_compression_with_different_algorithms() {
     let test_data = create_test_data(10); // 10MB
     fs::write(&input_path, &test_data).unwrap();
 
-    let algorithms = [CompressionAlgorithm::Pm];
+    let algorithms = [CompressionAlgorithm::Lz4];
 
     for (i, algorithm) in algorithms.iter().enumerate() {
         let output_path = temp_dir.path().join(format!("algorithm_output_{}.pm", i));
@@ -273,7 +273,7 @@ async fn test_compression_error_handling() {
     let nonexistent_input = temp_dir.path().join("nonexistent.txt");
     let output_path = temp_dir.path().join("output.pmz");
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
 
     // Try to compress nonexistent file
     let result = pipeline
@@ -284,7 +284,7 @@ async fn test_compression_error_handling() {
 
 #[tokio::test]
 async fn test_pipeline_stats() {
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Pm).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     let stats = pipeline.get_stats();
 
     assert!(stats.chunk_size > 0);

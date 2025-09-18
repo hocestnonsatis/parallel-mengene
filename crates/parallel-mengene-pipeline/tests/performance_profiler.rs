@@ -139,7 +139,7 @@ impl PerformanceProfiler {
 
     /// Profile compression performance across different algorithms
     pub async fn profile_algorithms(&mut self, data: &[u8]) -> Vec<PerformanceMetrics> {
-        let algorithms = [CompressionAlgorithm::Pm];
+        let algorithms = [CompressionAlgorithm::Lz4];
 
         let mut results = Vec::new();
 
@@ -350,10 +350,10 @@ mod tests {
         let test_data = create_test_data(1); // 1MB
 
         let metrics = profiler
-            .profile_compression(CompressionAlgorithm::Pm, &test_data, 1)
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
             .await;
 
-        assert_eq!(metrics.algorithm, CompressionAlgorithm::Pm);
+        assert_eq!(metrics.algorithm, CompressionAlgorithm::Lz4);
         assert_eq!(metrics.input_size, test_data.len());
         assert!(metrics.output_size > 0);
         assert!(metrics.compression_time.as_secs_f64() > 0.0);
@@ -372,7 +372,7 @@ mod tests {
         let sizes = vec![1, 5, 10]; // 1MB, 5MB, 10MB
 
         let results = profiler
-            .profile_scalability(CompressionAlgorithm::Pm, &sizes)
+            .profile_scalability(CompressionAlgorithm::Lz4, &sizes)
             .await;
 
         assert_eq!(results.len(), 3);
@@ -402,7 +402,7 @@ mod tests {
 
         // Profile with a fast algorithm
         profiler
-            .profile_compression(CompressionAlgorithm::Pm, &test_data, 1)
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
             .await;
 
         let bottlenecks = profiler.detect_bottlenecks();
@@ -416,13 +416,13 @@ mod tests {
         let test_data = create_test_data(1); // 1MB
 
         profiler
-            .profile_compression(CompressionAlgorithm::Pm, &test_data, 1)
+            .profile_compression(CompressionAlgorithm::Lz4, &test_data, 1)
             .await;
 
         let report = profiler.generate_report();
         assert!(report.contains("Performance Report"));
         assert!(report.contains("Summary"));
-        assert!(report.contains("Pm"));
+        assert!(report.contains("Lz4"));
     }
 
     #[tokio::test]
@@ -431,7 +431,7 @@ mod tests {
         let repetitive_data = create_repetitive_data(5); // 5MB
 
         let metrics = profiler
-            .profile_compression(CompressionAlgorithm::Pm, &repetitive_data, 1)
+            .profile_compression(CompressionAlgorithm::Lz4, &repetitive_data, 1)
             .await;
 
         // Repetitive data should compress; assert output exists rather than strict ratio

@@ -24,7 +24,8 @@ rayon.workspace = true
 memmap2.workspace = true
 crossbeam-channel.workspace = true
 
-# Compression algorithms (removed external deps for minimal footprint)
+# Compression algorithms
+lz4_flex = "0.11"
 
 # Utilities
 byteorder.workspace = true

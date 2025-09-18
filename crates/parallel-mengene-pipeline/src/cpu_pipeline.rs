@@ -102,8 +102,8 @@ mod tests {
 
     #[test]
     fn test_cpu_pipeline_creation() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
-        assert_eq!(pipeline.algorithm, CompressionAlgorithm::Pm);
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
+        assert_eq!(pipeline.algorithm, CompressionAlgorithm::Lz4);
     }
 
     // Single algorithm now; creation covered above
@@ -119,7 +119,7 @@ mod tests {
         std::fs::write(&input_path, &test_data).unwrap();
 
         // Compress file
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         pipeline
             .compress_file(&input_path, &output_path)
             .await
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_compress_chunk_sync() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let test_data = create_test_data();
 
         let compressed = pipeline.compress_chunk_sync(&test_data).unwrap();
@@ -144,7 +144,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_compress_chunk_async() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let test_data = create_test_data();
 
         let compressed = pipeline.compress_chunk(&test_data).await.unwrap();
@@ -154,7 +154,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_decompress_chunk() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let test_data = create_test_data();
 
         // Compress first
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_decompress_chunk_sync() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let test_data = create_test_data();
 
         // Compress first
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn test_roundtrip_compression() {
         let test_data = create_large_test_data();
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let compressed = pipeline.compress_chunk_sync(&test_data).unwrap();
         let decompressed = pipeline.decompress_chunk_sync(&compressed).unwrap();
         assert_eq!(decompressed, test_data);
@@ -197,11 +197,11 @@ mod tests {
         std::fs::write(&file_path, &test_data).unwrap();
 
         // Process metadata
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let metadata = pipeline.process_metadata(&file_path).unwrap();
 
         assert_eq!(metadata.size, test_data.len() as u64);
-        assert_eq!(metadata.algorithm, CompressionAlgorithm::Pm);
+        assert_eq!(metadata.algorithm, CompressionAlgorithm::Lz4);
         assert!(metadata.created.is_some());
         assert!(metadata.modified.is_some());
     }
@@ -211,7 +211,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("nonexistent.txt");
 
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let result = pipeline.process_metadata(&file_path);
 
         assert!(result.is_err());
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_empty_data_compression() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let empty_data = b"";
 
         let compressed = pipeline.compress_chunk_sync(empty_data).unwrap();
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_single_byte_compression() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let single_byte = b"a";
 
         let compressed = pipeline.compress_chunk_sync(single_byte).unwrap();
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_repetitive_data_compression() {
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let repetitive_data = b"AAAAA".repeat(1000);
 
         let compressed = pipeline.compress_chunk_sync(&repetitive_data).unwrap();
@@ -259,12 +259,12 @@ mod tests {
 
         std::fs::write(&file_path, b"test").unwrap();
 
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let metadata = pipeline.process_metadata(&file_path).unwrap();
 
         let debug_str = format!("{:?}", metadata);
         assert!(debug_str.contains("FileMetadata"));
-        assert!(debug_str.contains("Pm"));
+        assert!(debug_str.contains("Lz4"));
     }
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
 
         std::fs::write(&file_path, b"test").unwrap();
 
-        let pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let metadata = pipeline.process_metadata(&file_path).unwrap();
         let cloned_metadata = metadata.clone();
 
@@ -286,7 +286,7 @@ mod tests {
     fn test_compression_with_different_levels() {
         let test_data = create_large_test_data();
 
-        let pm_pipeline = CpuPipeline::new(CompressionAlgorithm::Pm).unwrap();
+        let pm_pipeline = CpuPipeline::new(CompressionAlgorithm::Lz4).unwrap();
         let compressed = pm_pipeline.compress_chunk_sync(&test_data).unwrap();
         let decompressed = pm_pipeline.decompress_chunk_sync(&compressed).unwrap();
         assert_eq!(decompressed, test_data);

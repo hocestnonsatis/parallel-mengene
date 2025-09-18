@@ -36,18 +36,16 @@ fn create_repetitive_data(size_mb: usize) -> Vec<u8> {
 async fn test_small_file_compression() {
     let temp_dir = tempdir().unwrap();
     let input_path = temp_dir.path().join("small_input.txt");
-    let output_path = temp_dir.path().join("small_output.pmz");
+    let output_path = temp_dir.path().join("small_output.lz4");
     let decompressed_path = temp_dir.path().join("small_decompressed.txt");
 
     // Create small test file (1KB)
     let test_data = create_test_data(0); // 0 MB = 1KB
     fs::write(&input_path, &test_data).unwrap();
 
-    // Test all algorithms
+    // Test LZ4 algorithm
     for algorithm in [
         CompressionAlgorithm::Lz4,
-        CompressionAlgorithm::Gzip,
-        CompressionAlgorithm::Zstd,
     ] {
         let pipeline = ParallelPipeline::new(algorithm).unwrap();
         
@@ -77,14 +75,14 @@ async fn test_small_file_compression() {
 async fn test_medium_file_compression() {
     let temp_dir = tempdir().unwrap();
     let input_path = temp_dir.path().join("medium_input.txt");
-    let output_path = temp_dir.path().join("medium_output.pmz");
+    let output_path = temp_dir.path().join("medium_output.lz4");
     let decompressed_path = temp_dir.path().join("medium_decompressed.txt");
 
     // Create medium test file (10MB)
     let test_data = create_test_data(10);
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Zstd).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     
     // Compress
     pipeline.compress_file(&input_path, &output_path).await.unwrap();
@@ -107,14 +105,14 @@ async fn test_medium_file_compression() {
 async fn test_repetitive_data_compression() {
     let temp_dir = tempdir().unwrap();
     let input_path = temp_dir.path().join("repetitive_input.txt");
-    let output_path = temp_dir.path().join("repetitive_output.pmz");
+    let output_path = temp_dir.path().join("repetitive_output.lz4");
     let decompressed_path = temp_dir.path().join("repetitive_decompressed.txt");
 
     // Create repetitive test file (50MB)
     let test_data = create_repetitive_data(50);
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Zstd).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     
     // Compress
     pipeline.compress_file(&input_path, &output_path).await.unwrap();
@@ -138,7 +136,7 @@ async fn test_repetitive_data_compression() {
 async fn test_empty_file_compression() {
     let temp_dir = tempdir().unwrap();
     let input_path = temp_dir.path().join("empty_input.txt");
-    let output_path = temp_dir.path().join("empty_output.pmz");
+    let output_path = temp_dir.path().join("empty_output.lz4");
     let decompressed_path = temp_dir.path().join("empty_decompressed.txt");
 
     // Create empty file
@@ -169,11 +167,11 @@ async fn test_compression_roundtrip_multiple_times() {
     let test_data = create_test_data(5); // 5MB
     fs::write(&input_path, &test_data).unwrap();
 
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Zstd).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     
     // Perform multiple compression/decompression cycles
     for i in 0..3 {
-        let compressed_path = temp_dir.path().join(format!("roundtrip_compressed_{}.pmz", i));
+        let compressed_path = temp_dir.path().join(format!("roundtrip_compressed_{}.lz4", i));
         let decompressed_path = temp_dir.path().join(format!("roundtrip_decompressed_{}.txt", i));
         
         // Compress
@@ -203,12 +201,10 @@ async fn test_compression_with_different_algorithms() {
 
     let algorithms = [
         CompressionAlgorithm::Lz4,
-        CompressionAlgorithm::Gzip,
-        CompressionAlgorithm::Zstd,
     ];
 
     for (i, algorithm) in algorithms.iter().enumerate() {
-        let output_path = temp_dir.path().join(format!("algorithm_output_{}.pmz", i));
+        let output_path = temp_dir.path().join(format!("algorithm_output_{}.lz4", i));
         
         let pipeline = ParallelPipeline::new(*algorithm).unwrap();
         
@@ -234,7 +230,7 @@ async fn test_compression_with_different_algorithms() {
 async fn test_compression_error_handling() {
     let temp_dir = tempdir().unwrap();
     let nonexistent_input = temp_dir.path().join("nonexistent.txt");
-    let output_path = temp_dir.path().join("output.pmz");
+    let output_path = temp_dir.path().join("output.lz4");
 
     let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     
@@ -245,7 +241,7 @@ async fn test_compression_error_handling() {
 
 #[tokio::test]
 async fn test_pipeline_stats() {
-    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Zstd).unwrap();
+    let pipeline = ParallelPipeline::new(CompressionAlgorithm::Lz4).unwrap();
     let stats = pipeline.get_stats();
     
     assert!(stats.chunk_size > 0);
