@@ -5,8 +5,8 @@ use parallel_mengene_core::algorithms::CompressionAlgorithm;
 use parallel_mengene_core::utils::{format_file_size, get_cpu_count};
 use parallel_mengene_pipeline::parallel_pipeline::ParallelPipeline;
 use std::path::{Path, PathBuf};
-use tracing::info;
 use tempfile::NamedTempFile;
+use tracing::info;
 
 /// Archive a directory into a temporary .tar file
 fn archive_directory_to_temp(input_dir: &Path) -> Result<NamedTempFile> {
@@ -50,8 +50,6 @@ fn resolve_compress_output_path(input: &Path, output: Option<PathBuf>) -> PathBu
         }
     }
 }
-
-
 
 /// Compress a file or directory
 pub async fn compress(
@@ -150,7 +148,10 @@ fn generate_decompress_output_base(input: &Path) -> PathBuf {
 }
 
 /// Resolve decompression target location considering if `output` is a directory
-fn resolve_decompress_targets(input: &Path, output: Option<PathBuf>) -> (PathBuf, bool /*output_is_dir*/) {
+fn resolve_decompress_targets(
+    input: &Path,
+    output: Option<PathBuf>,
+) -> (PathBuf, bool /*output_is_dir*/) {
     let base = generate_decompress_output_base(input);
     match output {
         None => (base, false),
@@ -196,7 +197,9 @@ pub async fn decompress(
     // Post-process: if the decompressed data is a tar archive, extract preserving nested structure
     if file_seems_tar(&temp_out_path) {
         // Determine parent directory for extraction
-        let target_parent = if (final_target.exists() && final_target.is_dir()) || output_is_dir_hint {
+        let target_parent = if (final_target.exists() && final_target.is_dir())
+            || output_is_dir_hint
+        {
             // User passed an output directory; extract under it preserving top-level dir in the tar
             final_target.clone()
         } else {
@@ -217,7 +220,9 @@ pub async fn decompress(
         drop(temp_out);
     } else {
         // Regular file: move to final target path. If user specified a directory, we already resolved that to include the original filename
-        if let Some(parent) = final_target.parent() { std::fs::create_dir_all(parent)?; }
+        if let Some(parent) = final_target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         // Overwrite if exists
         std::fs::rename(&temp_out_path, &final_target).or_else(|_| {
             // Cross-device fallback

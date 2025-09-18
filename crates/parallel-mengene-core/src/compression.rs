@@ -61,7 +61,9 @@ impl CompressionContext {
                 out.push(run as u8);
                 out.push(b);
             } else {
-                for _ in 0..run { out.push(b); }
+                for _ in 0..run {
+                    out.push(b);
+                }
             }
             i += run;
         }
@@ -72,7 +74,9 @@ impl CompressionContext {
         const MARKER: u8 = 0xFF;
         // Validate magic header
         if data.len() < 4 || &data[..4] != b"PMR1" {
-            return Err(Error::Compression("PM decompression: invalid or missing magic header".into()));
+            return Err(Error::Compression(
+                "PM decompression: invalid or missing magic header".into(),
+            ));
         }
         let mut out = Vec::with_capacity(data.len().saturating_sub(4));
         let mut i = 4; // start after header

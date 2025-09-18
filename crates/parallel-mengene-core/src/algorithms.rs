@@ -11,10 +11,14 @@ pub enum CompressionAlgorithm {
 
 impl CompressionAlgorithm {
     /// Get the default compression level for this algorithm
-    pub fn default_level(&self) -> u32 { 1 }
+    pub fn default_level(&self) -> u32 {
+        1
+    }
 
     /// Get the maximum compression level for this algorithm
-    pub fn max_level(&self) -> u32 { 1 }
+    pub fn max_level(&self) -> u32 {
+        1
+    }
 }
 
 impl std::str::FromStr for CompressionAlgorithm {
@@ -44,8 +48,14 @@ mod tests {
 
     #[test]
     fn test_compression_algorithm_from_str() {
-        assert_eq!("pm".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Pm);
-        assert_eq!("PM".parse::<CompressionAlgorithm>().unwrap(), CompressionAlgorithm::Pm);
+        assert_eq!(
+            "pm".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Pm
+        );
+        assert_eq!(
+            "PM".parse::<CompressionAlgorithm>().unwrap(),
+            CompressionAlgorithm::Pm
+        );
     }
 
     #[test]
