@@ -137,11 +137,11 @@ fn file_seems_tar(path: &Path) -> bool {
     // More robust tar detection: check for tar magic bytes and try to read entries
     std::fs::File::open(path)
         .ok()
-        .and_then(|mut f| {
+        .map(|mut f| {
             // Check for tar magic bytes at the beginning
             let mut buffer = [0; 512];
             if f.read_exact(&mut buffer).is_err() {
-                return Some(false);
+                return false;
             }
 
             // Tar files start with a 512-byte header, check if it looks like a tar header
@@ -153,10 +153,10 @@ fn file_seems_tar(path: &Path) -> bool {
             // Check if the filename area contains printable characters or nulls (typical for tar)
             let has_valid_filename = filename_bytes
                 .iter()
-                .all(|&b| b == 0 || (b >= 32 && b <= 126));
+                .all(|&b| b == 0 || (32..=126).contains(&b));
 
             if !has_valid_filename {
-                return Some(false);
+                return false;
             }
 
             // Now try to read the tar archive
@@ -166,7 +166,7 @@ fn file_seems_tar(path: &Path) -> bool {
                 let mut count = 0;
                 for entry in entries {
                     if entry.is_err() {
-                        return Some(false);
+                        return false;
                     }
                     count += 1;
                     if count >= 3 {
@@ -174,9 +174,9 @@ fn file_seems_tar(path: &Path) -> bool {
                         break;
                     }
                 }
-                Some(count > 0)
+                count > 0
             } else {
-                Some(false)
+                false
             }
         })
         .unwrap_or(false)
