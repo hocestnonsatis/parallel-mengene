@@ -6,6 +6,7 @@ use clap::Parser;
 
 mod cli;
 mod commands;
+// mod progress; // Not used in current implementation
 
 use cli::Cli;
 use commands::{benchmark, compress, decompress};
@@ -21,21 +22,16 @@ async fn main() -> anyhow::Result<()> {
         cli::Command::Compress {
             input,
             output,
-            algorithm,
-            level,
-            threads,
             verbose,
         } => {
-            compress(input, output, algorithm, level, threads, verbose).await?;
+            compress(input, output, verbose).await?;
         }
         cli::Command::Decompress {
             input,
             output,
-            algorithm,
-            threads,
             verbose,
         } => {
-            decompress(input, output, algorithm, threads, verbose).await?;
+            decompress(input, output, verbose).await?;
         }
         cli::Command::Benchmark {
             input,

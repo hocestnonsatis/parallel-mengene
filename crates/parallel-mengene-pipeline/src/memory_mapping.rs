@@ -136,4 +136,9 @@ impl MemoryMappingConfig {
     pub fn should_use_streaming(&self, file_size: usize) -> bool {
         file_size > self.max_memory_usage * 2 // Use streaming for files larger than 2x max memory
     }
+
+    /// Get the threshold for considering a file "large" and using memory mapping
+    pub fn large_file_threshold(&self) -> u64 {
+        self.chunk_size as u64
+    }
 }

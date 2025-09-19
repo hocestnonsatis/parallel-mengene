@@ -327,7 +327,10 @@ impl ParallelPipeline {
         input_path: &Path,
         output_path: &Path,
     ) -> Result<()> {
-        // 1. Create memory-mapped file
+        // 1. Check memory usage before creating memory mapping
+        self.memory_tracker.check_and_warn()?;
+
+        // 2. Create memory-mapped file
         let mmap_file = MemoryMappedFile::new(input_path)?;
         let chunk_size = self
             .memory_config

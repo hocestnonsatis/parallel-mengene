@@ -11,15 +11,15 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.0.4-rc1"
-authors = ["Parallel-Mengene Team"]
+version = "1.1.0-optimized"
+authors = ["hocestnonsatis"]
 edition = "2021"
 license = "Unlicense"
 repository = "https://github.com/hocestnonsatis/parallel-mengene"
 homepage = "https://github.com/hocestnonsatis/parallel-mengene"
-description = "High-performance parallel file compression tool - Squeeze it parallel!"
-keywords = ["compression", "performance", "parallel", "cpu", "multithreading"]
-categories = ["compression", "command-line-utilities"]
+description = "High-Performance Multi-Algorithm File Compression with Intelligent Selection"
+keywords = ["compression", "performance", "parallel", "cpu", "multithreading", "intelligent", "multi-algorithm", "binary-format", "entropy-analysis"]
+categories = ["compression", "command-line-utilities", "data-compression"]
 rust-version = "1.75"
 
 [workspace.dependencies]
@@ -64,7 +64,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Statistics and analysis
 statistics = "0.4"
-statistical = "1.0"
 
 # Test dependencies
 tempfile = "3.8"

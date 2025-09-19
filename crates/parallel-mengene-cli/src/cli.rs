@@ -6,7 +6,9 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "parallel-mengene")]
-#[command(about = "Fast LZ4-based file compression tool - High-speed parallel processing!")]
+#[command(
+    about = "High-performance parallel file compression tool - Multiple algorithms supported!"
+)]
 #[command(version)]
 pub struct Cli {
     #[command(subcommand)]
@@ -15,48 +17,28 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Compress a file or directory
+    /// Compress a file or directory with intelligent algorithm selection
     Compress {
         /// Input file or directory to compress
         input: PathBuf,
 
-        /// Output file or directory (optional - will auto-generate with .pm extension if not provided)
+        /// Output .pma file (optional - will auto-generate if not provided)
         output: Option<PathBuf>,
 
-        /// Compression algorithm to use (only 'lz4' is supported)
-        #[arg(short, long, default_value = "lz4")]
-        algorithm: CompressionAlgorithm,
-
-        /// Compression level (fixed for pm)
-        #[arg(short, long)]
-        level: Option<u32>,
-
-        /// Number of threads to use
-        #[arg(short, long)]
-        threads: Option<usize>,
-
-        /// Verbose output (print speed and compression ratio)
+        /// Verbose output (print algorithm selection details)
         #[arg(short = 'v', long)]
         verbose: bool,
     },
 
-    /// Decompress a file or directory
+    /// Decompress a .pma file
     Decompress {
-        /// Input file or directory to decompress
+        /// Input .pma file to decompress
         input: PathBuf,
 
-        /// Output file or directory (optional - will auto-generate based on input if not provided)
+        /// Output directory for decompressed files (optional - will auto-generate if not provided)
         output: Option<PathBuf>,
 
-        /// Compression algorithm to use (only 'lz4' is supported)
-        #[arg(short, long, default_value = "lz4")]
-        algorithm: CompressionAlgorithm,
-
-        /// Number of threads to use
-        #[arg(short, long)]
-        threads: Option<usize>,
-
-        /// Verbose output (print speed)
+        /// Verbose output (print decompression details)
         #[arg(short = 'v', long)]
         verbose: bool,
     },
@@ -66,7 +48,7 @@ pub enum Command {
         /// Input file or directory to benchmark
         input: PathBuf,
 
-        /// Algorithms to benchmark (only 'lz4' is supported)
+        /// Algorithms to benchmark (lz4, gzip, zstd)
         #[arg(short, long, default_values = ["lz4"])]
         algorithms: Vec<CompressionAlgorithm>,
 

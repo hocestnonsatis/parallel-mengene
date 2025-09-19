@@ -6,7 +6,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description = "High-performance parallel compression pipeline for parallel-mengene"
+description = "Intelligent parallel compression pipeline with memory optimization and dynamic thread allocation"
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,9 @@ sysinfo.workspace = true
 
 # Core crate
 parallel-mengene-core = { path = "../parallel-mengene-core" }
+
+# File system utilities
+walkdir = "2.4"
 
 # GPU crate - REMOVED (CPU-only approach)
 

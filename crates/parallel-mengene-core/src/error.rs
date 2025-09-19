@@ -25,6 +25,9 @@ pub enum Error {
 
     #[error("GPU not available: {0}")]
     GpuNotAvailable(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(String),
 }
 
 #[cfg(test)]

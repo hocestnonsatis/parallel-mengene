@@ -6,6 +6,7 @@
 
 pub mod coordinator;
 pub mod cpu_pipeline;
+pub mod intelligent_pipeline;
 pub mod memory_mapping;
 pub mod memory_monitor;
 pub mod parallel_pipeline;

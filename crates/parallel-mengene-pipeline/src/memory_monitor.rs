@@ -237,6 +237,22 @@ impl MemoryUsageTracker {
     pub fn monitor(&self) -> &MemoryMonitor {
         &self.monitor
     }
+
+    /// Record a memory operation for tracking
+    pub fn record_operation(
+        &self,
+        operation: &str,
+        data_size: usize,
+        _timestamp: Instant,
+    ) -> Result<()> {
+        // For now, just check memory usage after the operation
+        self.check_and_warn()?;
+
+        // In a full implementation, this would track operation-specific memory usage
+        tracing::debug!("Recorded {} operation with {} bytes", operation, data_size);
+
+        Ok(())
+    }
 }
 
 impl Default for MemoryUsageTracker {
